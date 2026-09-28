@@ -122,6 +122,47 @@ export function approveBlocks(
   ];
 }
 
+/** action_ids for the Brainbase outreach approval prompt; value = the Outreach task id. */
+export const BB_APPROVE = 'bb_approve';
+export const BB_REJECT = 'bb_reject';
+
+/**
+ * Block Kit for approving an email drafted by the Brainbase Outreach agent:
+ * Approve / Reject buttons (handled by /slack/interactions) plus a signed,
+ * expiring link to /approve/brainbase for when the Slack round trip is
+ * unavailable (e.g. a local demo Slack cannot reach). `draft` is agent
+ * output and must already be Slack-escaped.
+ */
+export function brainbaseApprovalBlocks(taskId: string, approveUrl: string, draft: string): SlackBlock[] {
+  return [
+    { type: 'section', text: { type: 'mrkdwn', text: draft } },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Approve & send', emoji: true },
+          style: 'primary',
+          action_id: BB_APPROVE,
+          value: taskId,
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Reject', emoji: true },
+          style: 'danger',
+          action_id: BB_REJECT,
+          value: taskId,
+        },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Approve via link', emoji: true },
+          url: approveUrl,
+        },
+      ],
+    },
+  ];
+}
+
 export type SlackBlockAction = {
   action_id: string;
   value?: string;

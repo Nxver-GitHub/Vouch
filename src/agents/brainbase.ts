@@ -26,6 +26,7 @@ import type { Env, AgentEvent, AgentName } from '../types';
 import type { StartRunInput, StartRunResult, Waitable } from './orchestrator';
 import { createThread, getThread, listChildTasks, listMessages, messageText, type BrainbaseTask } from '../lib/brainbase';
 import { safeError } from '../lib/security';
+import { requestApproval } from './brainbase-approval';
 
 /** Up to two Brainbase calls per poll; 10s keeps a 30-minute run to ~360 subrequests. */
 const POLL_MS = 10_000;
@@ -190,8 +191,13 @@ async function runOnBrainbase(env: Env, runId: string, agentId: string, input: S
       // A finished middle agent gets a grace period to hand off before we give up on it.
       if (nextRole && outcome === 'done' && Date.now() - settledAt < HANDOFF_GRACE_MS) continue;
 
-      const summary = await summaryOf(env, tip.taskId);
-      await emit(env, runId, tip.role, outcome, summary || `Brainbase status: ${tip.status}`);
+      if (tip.role === 'outreach' && outcome === 'waiting') {
+        // The draft is waiting on a human: put it in Slack with Approve / Reject buttons.
+        await emit(env, runId, 'outreach', 'waiting', await requestApproval(env, tip.taskId));
+      } else {
+        const summary = await summaryOf(env, tip.taskId);
+        await emit(env, runId, tip.role, outcome, summary || `Brainbase status: ${tip.status}`);
+      }
 
       if (outcome === 'failed') {
         await emit(env, runId, 'orchestrator', 'failed', `The chain stopped: ${tip.role} failed.`);

@@ -91,6 +91,22 @@ export async function listMessages(env: Env, threadId: string): Promise<Brainbas
   return call(env, 'GET', `/v2/threads/${encodeURIComponent(threadId)}/messages`);
 }
 
+/** Send the next user turn to a task that is waiting (e.g. `need_more_info`). 201 = received, not yet consumed. */
+export async function sendTaskInput(env: Env, taskId: string, text: string): Promise<BrainbaseResult<unknown>> {
+  return call(env, 'POST', `/v2/tasks/${encodeURIComponent(taskId)}/inputs`, {
+    input_id: crypto.randomUUID(),
+    messages: [{ role: 'user', content: text }],
+  });
+}
+
+/** The last assistant message of a task, flattened; '' if there is none or the read fails. */
+export async function lastAssistantText(env: Env, taskId: string): Promise<string> {
+  const messages = await listMessages(env, taskId);
+  if (!messages.ok) return '';
+  const last = [...messages.data.items].reverse().find((m) => m.role === 'assistant' && messageText(m.content).trim());
+  return last ? messageText(last.content).trim() : '';
+}
+
 /**
  * Message `content` is not a fixed shape: a string, null, or an array of
  * `{type, text}` parts. Flatten to plain text; anything else becomes ''.

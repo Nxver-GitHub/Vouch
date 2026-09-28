@@ -25,6 +25,8 @@ export type Env = {
   BRAINBASE_ORCHESTRATOR_ID: string;
   /** JSON: Vouch role -> Brainbase agent id, for following the hand-off chain. */
   BRAINBASE_AGENT_IDS: string;
+  /** Optional origin for links the Worker hands out (default https://PUBLIC_BASE_DOMAIN); a local demo sets http://localhost:8787. */
+  APP_BASE_URL?: string;
   LINEAR_TEAM_ID: string;
   LINEAR_STATE_TODO: string;
   LINEAR_STATE_AUDITED: string;

@@ -24,7 +24,8 @@ import {
   safeError,
   escapeHtml,
 } from './lib/security';
-import { parseInteraction, respondToInteraction } from './lib/slack';
+import { BB_APPROVE, BB_REJECT, parseInteraction, respondToInteraction } from './lib/slack';
+import { decide, verifyApprovalLink } from './agents/brainbase-approval';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -272,6 +273,20 @@ app.post('/slack/interactions', async (c) => {
   try {
     const payload = parseInteraction(raw);
     const action = payload.actions?.[0];
+    // Brainbase Outreach drafts: the value is the waiting Outreach task id.
+    // decide() only acts on a Vouch Outreach task that is still waiting, so a
+    // retry or a second click cannot send twice.
+    if ((action?.action_id === BB_APPROVE || action?.action_id === BB_REJECT) && typeof action.value === 'string' && payload.response_url) {
+      const userId = payload.user?.id ?? 'slack';
+      const responseUrl = payload.response_url;
+      const decision = action.action_id === BB_APPROVE ? 'approve' : 'reject';
+      c.executionCtx.waitUntil(
+        decide(c.env, action.value, decision, `<@${userId}>`)
+          .then((result) => respondToInteraction(responseUrl, result.ok ? result.text : `❌ ${result.text}`))
+          .catch(() => undefined),
+      );
+      return c.body(null, 200);
+    }
     if (action?.action_id === 'approve' && typeof action.value === 'string' && payload.response_url) {
       // The button value is a business id, never a recipient. approveOutreach
       // is the idempotent gate, so a Slack retry cannot send a second email.
@@ -305,6 +320,48 @@ app.get('/approve', async (c) => {
   // gate, so the second visit reports "already handled" and sends nothing.
   const result = await approveOutreach(c.env, businessId, 'link');
   return c.html(`<p>${escapeHtml(approvalText(result, null))}</p>`);
+});
+
+/**
+ * Fallback approval for Brainbase Outreach drafts, for when the Slack round
+ * trip is unavailable (e.g. a local demo Slack cannot reach). HMAC'd and
+ * expiring. GET only shows the choice; the decision is a POST, so link
+ * previewers and prefetchers can never approve an email by fetching the URL.
+ */
+app.get('/approve/brainbase', async (c) => {
+  const task = c.req.query('task') ?? '';
+  const token = c.req.query('token') ?? '';
+  const exp = Number(c.req.query('exp'));
+  if (!/^[0-9a-f-]{36}$/.test(task) || !token || !Number.isFinite(exp)) return c.text('missing parameters', 400);
+  if (!(await verifyApprovalLink(c.env, task, exp, token))) return c.text('invalid or expired link', 403);
+
+  const hidden =
+    `<input type="hidden" name="task" value="${escapeHtml(task)}">` +
+    `<input type="hidden" name="exp" value="${escapeHtml(exp)}">` +
+    `<input type="hidden" name="token" value="${escapeHtml(token)}">`;
+  return c.html(
+    `<!doctype html><meta charset="utf-8"><title>Approve email</title>` +
+      `<body style="font:16px/1.6 ui-sans-serif,system-ui;max-width:36rem;margin:4rem auto;padding:0 1rem">` +
+      `<h1 style="font-size:20px">Send the Vouch outreach email?</h1>` +
+      `<p>The draft is in Slack and in the Outreach task on Brainbase.</p>` +
+      `<form method="post" style="display:inline">${hidden}<input type="hidden" name="decision" value="approve">` +
+      `<button style="padding:10px 16px">Approve &amp; send</button></form> ` +
+      `<form method="post" style="display:inline">${hidden}<input type="hidden" name="decision" value="reject">` +
+      `<button style="padding:10px 16px">Reject</button></form>`,
+  );
+});
+
+app.post('/approve/brainbase', async (c) => {
+  const form = await c.req.parseBody();
+  const task = typeof form.task === 'string' ? form.task : '';
+  const token = typeof form.token === 'string' ? form.token : '';
+  const exp = Number(form.exp);
+  const decision = form.decision === 'reject' ? 'reject' : form.decision === 'approve' ? 'approve' : null;
+  if (!/^[0-9a-f-]{36}$/.test(task) || !token || !Number.isFinite(exp) || !decision) return c.text('missing parameters', 400);
+  if (!(await verifyApprovalLink(c.env, task, exp, token))) return c.text('invalid or expired link', 403);
+
+  const result = await decide(c.env, task, decision, 'the approval link');
+  return c.html(`<p style="font:16px/1.6 ui-sans-serif,system-ui;max-width:36rem;margin:4rem auto">${escapeHtml(result.ok ? result.text : `❌ ${result.text}`)}</p>`);
 });
 
 /** One phrasing for both approval surfaces. Every value is redacted upstream. */
