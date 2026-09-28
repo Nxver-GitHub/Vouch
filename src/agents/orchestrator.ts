@@ -266,6 +266,10 @@ function worstFact(audit: AuditorResult): string {
   if (wrong) return `${wrong.engine} says ${wrong.factKey}: "${wrong.stated}" — it's "${wrong.expected}".`;
   const missing = audit.verdicts.find((v) => v.verdict === 'missing');
   if (missing) return `${missing.engine} has no ${missing.factKey} at all.`;
+  const disputed = audit.verdicts.find((v) => v.verdict === 'disputed');
+  if (disputed) {
+    return `${disputed.engine} and Google disagree on ${disputed.factKey}: "${disputed.stated}" vs "${disputed.expected}" — not graded.`;
+  }
   return 'No factual errors found.';
 }
 

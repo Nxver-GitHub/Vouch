@@ -85,13 +85,8 @@ function isoDate(now: number): string {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-/** Booking ground truth: the official channel, website first, phone second. */
-function bookingTruth(facts: PlaceFacts): string | null {
-  return facts.website ?? facts.phone;
-}
-
 /**
- * Six fact probes. Deterministic in `facts`, `city` and `now` — identical
+ * Five fact probes. Deterministic in `facts`, `city` and `now` — identical
  * inputs produce identical strings, which is what makes two audits comparable.
  */
 export function buildProbes(
@@ -127,12 +122,11 @@ export function buildProbes(
         `Answer open or closed and give that day's hours.`,
       expected: facts.hours.length > 0 ? facts.hours.join(' | ') : null,
     },
-    {
-      key: 'reservations',
-      factKey: 'reservations',
-      text: `How does a customer book or reserve at ${who}? Give the official booking link or phone number.`,
-      expected: bookingTruth(facts),
-    },
+    // The reservations probe is deliberately absent. Places (New) gives us no
+    // reservation fact at this SKU; the old probe compared "how do I book" to
+    // the website URL and on 2026-09-28 graded Golden Boy Pizza WRONG for
+    // truthfully saying it takes no reservations. A probe with no ground
+    // truth cannot produce a verdict we would put on a page.
     {
       key: 'category',
       factKey: 'category',

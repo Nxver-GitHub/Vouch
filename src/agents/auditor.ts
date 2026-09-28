@@ -99,6 +99,8 @@ export type ReviewItem = {
   engine: Engine;
   confidence: number;
   reason: string;
+  /** The same fact as a 'disputed' verdict: both values shown, excluded from the score. */
+  verdict: FactVerdict;
 };
 
 export type ScoredAudit = { score: number; grade: string };
@@ -445,6 +447,13 @@ export async function classify(
         engine: outcome.answer.engine,
         confidence: 0,
         reason: `classification failed: ${safeError(error)}`,
+        verdict: {
+          factKey: outcome.probe.factKey,
+          stated: excerpt(outcome.answer.answer),
+          expected: outcome.probe.expected,
+          verdict: 'disputed',
+          engine: outcome.answer.engine,
+        },
       });
       continue;
     }
@@ -457,6 +466,7 @@ export async function classify(
           `below the ${CONFIDENCE_REVIEW} confidence floor — excluded from the published score ` +
           `(presence ${fact.confidences.presence.toFixed(2)}, correct ${fact.confidences.correct.toFixed(2)}, ` +
           `severity ${fact.confidences.severity.toFixed(2)})`,
+        verdict: { ...fact.verdict, verdict: 'disputed' },
       });
       continue;
     }
@@ -661,12 +671,13 @@ export async function runAuditor(env: Env, input: AuditorInput): Promise<Auditor
 
   await emit(env, input.runId, {
     state: 'working',
-    message: `${scored.score}/100 (${scored.grade}) from ${graded.length} verdicts, ${review.length} to review`,
+    message: `${scored.score}/100 (${scored.grade}) from ${graded.length} verdicts, ${review.length} disputed`,
     score: scored.score,
     business: { slug: business.slug, name: business.facts.name, lit },
     // types.ts calls this panel "the wrong/missing sheet" — send what is
     // actually wrong, not every verdict we formed.
-    facts: graded
+    // Wrong, missing AND disputed: everything the owner should look at.
+    facts: [...graded, ...review]
       .filter((g) => g.verdict.verdict !== 'correct')
       .map((g) => ({
         key: g.verdict.factKey,
@@ -706,7 +717,9 @@ export async function runAuditor(env: Env, input: AuditorInput): Promise<Auditor
     businessId: business.id,
     slug: business.slug,
     facts: business.facts,
-    verdicts: graded.map((g) => g.verdict),
+    // Disputed facts are part of the record the owner sees; they are NOT part
+    // of the number (scoreAudit only ever saw `graded`).
+    verdicts: [...graded.map((g) => g.verdict), ...review.map((r) => r.verdict)],
     review,
     score: scored.score,
     grade: scored.grade,

@@ -114,7 +114,8 @@ export type FactVerdict = {
   factKey: 'hours' | 'phone' | 'address' | 'open_now' | 'reservations' | 'category';
   stated: string | null;
   expected: string | null;
-  verdict: 'correct' | 'wrong' | 'missing';
+  /** 'disputed' = the classifier could not decide with confidence; shown, never scored. */
+  verdict: 'correct' | 'wrong' | 'missing' | 'disputed';
   engine: Engine;
 };
 

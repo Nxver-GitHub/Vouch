@@ -86,8 +86,9 @@ async function loadTemplate(env: Env): Promise<string> {
 
 // worstFact — the H1 the business is LOSING, chosen in code.
 const VERDICT_SEVERITY: Readonly<Record<FactVerdict['verdict'], number>> = {
-  wrong: 2,
-  missing: 1,
+  wrong: 3,
+  missing: 2,
+  disputed: 1, // engines disagree with ground truth but the classifier was unsure
   correct: 0,
 };
 
