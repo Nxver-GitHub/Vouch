@@ -285,7 +285,7 @@ async function finishSent(env: Env, row: OutreachRow, resendId: string): Promise
   await env.DB.prepare('UPDATE outreach SET status = ?, sent_at = ?, resend_id = ? WHERE id = ?')
     .bind('sent', Date.now(), resendId, row.id)
     .run();
-  await emitOutreach(env, row.run_id, 'done', `email sent to ${row.to_email}`);
+  await emitOutreach(env, row.run_id, 'done', 'email sent to the owner on file');
   return { ok: true, transitioned: true, sent: true, to: row.to_email };
 }
 

@@ -421,7 +421,7 @@ ul.cites li.only{ color:var(--ink-2); }
   <section class="control">
     <label class="field">
       <span class="lbl">Business</span>
-      <input id="in-biz" value="Tartine Bakery" placeholder="Name of a local business" autocomplete="off">
+      <input id="in-biz" value="Golden Boy Pizza" placeholder="Name of a local business" autocomplete="off">
     </label>
     <label class="field">
       <span class="lbl">City</span>
@@ -533,9 +533,7 @@ ul.cites li.only{ color:var(--ink-2); }
         <div class="cap">source overlap</div>
         <div class="frac" id="nd-frac">&nbsp;</div>
         <hr>
-        <div class="cmp" id="nd-cmp">
-          Google local 3-pack, same query twice: <b>~90%</b>
-        </div>
+        <div class="cmp" id="nd-cmp"></div>
       </div>
       <div class="side b">
         <h4 style="color:var(--ink)">Run B</h4>
@@ -737,7 +735,7 @@ const agentEls = {};
 })();
 
 /* ---------- state ---------- */
-let timers = [], facts = [], t0 = 0, clockTimer = null;
+let timers = [], facts = [], t0 = 0, clockTimer = null, factsReceived = 0;
 /* street-scene sprite state — see design/BLENDER-HANDOFF.md. Lighting comes
    only from business/competitors[].lit. `stagePaid` and `stageSignVisible`
    are separate channels: payment never touches lighting. */
@@ -780,21 +778,24 @@ function renderAgent(ev){
   el.state.textContent = ev.state;
 }
 
-function renderScore(score){
+function renderScore(score, grade){
   if (score === null || score === undefined) return;
   $("score").textContent = score;
   const letter = $("letter");
-  letter.textContent = gradeFor(score);
+  const letterText = (typeof grade === "string" && grade) ? grade : gradeFor(score);
+  letter.textContent = letterText;
   letter.style.color = gradeColor(score);
   const arc = $("arc");
   const C = 490;
   arc.style.stroke = gradeColor(score);
   arc.style.strokeDashoffset = String(C - (C * (score / 100)));
+  const verdictPhrase = factsReceived > 0 ? (" from " + factsReceived + " verdicts") : "";
   $("gradenote").textContent =
-    "Grade " + gradeFor(score) + ". Computed in code from ground-truth diffs across 6 fact probes — no model graded this number.";
+    "Grade " + letterText + ". Computed in code from ground-truth diffs" + verdictPhrase + " — no model graded this number.";
 }
 
 function renderFacts(newFacts){
+  factsReceived += newFacts.length;
   newFacts.forEach(f => { if (f.verdict !== "correct") facts.push(f); });
   const body = $("facts");
   if (!facts.length){ body.innerHTML = '<tr><td colspan="5" class="empty">No probes returned yet.</td></tr>'; return; }
@@ -813,7 +814,9 @@ function renderFacts(newFacts){
 
 function renderRank(ev){
   if (!ev.rank) return;
-  const [n, m] = ev.rank;
+  const n = Number(ev.rank[0]);
+  const m = Number(ev.rank[1]);
+  if (!Number.isInteger(n) || !Number.isInteger(m)) return;
   $("rankline").innerHTML =
     '<span style="color:var(--ink-2)">Ranked</span> <b>' + n + 'th of ' + m + '</b> ' +
     '<span style="color:var(--ink-2)">nearby bakeries when an engine is asked to recommend one.</span>';
@@ -822,6 +825,7 @@ function renderRank(ev){
 function renderStreet(ev){
   if (!ev.competitors || !ev.competitors.length) return;
   const you = ev.business;
+  if (!you) return;
   const shops = [{ name:you.name + "  (you)", lit:you.lit, you:true }]
     .concat(ev.competitors.map(c => ({ name:c.name, lit:c.lit, you:false })));
   $("street").innerHTML = shops.map(s =>
@@ -878,6 +882,13 @@ function formatGap(gap){
   return gap;
 }
 
+/* Live events send overlap.a.ts / overlap.b.ts as numeric epoch milliseconds;
+   the fixture sends an already-formatted string. Handle both. */
+function formatTs(ts){
+  if (typeof ts === "number") return new Date(ts).toLocaleTimeString();
+  return ts;
+}
+
 function renderOverlap(o){
   const A = o.a.sources, B = o.b.sources;
   const setB = new Set(B), setA = new Set(A);
@@ -888,8 +899,8 @@ function renderOverlap(o){
   $("nd-engine").textContent = o.engine;
   $("nd-gap").textContent = formatGap(o.gap);
   $("nd-q").innerHTML = "&ldquo;" + esc(o.query) + "&rdquo;";
-  $("nd-a-stamp").textContent = o.a.ts;
-  $("nd-b-stamp").textContent = o.b.ts;
+  $("nd-a-stamp").textContent = formatTs(o.a.ts);
+  $("nd-b-stamp").textContent = formatTs(o.b.ts);
 
   const li = (s, isShared) =>
     '<li class="' + (isShared ? "shared" : "only") + '"><span class="box"></span>' + esc(s) + '</li>';
@@ -899,8 +910,7 @@ function renderOverlap(o){
   $("nd-pct").textContent = pct.toFixed(1) + "%";
   $("nd-frac").textContent = shared.length + " of " + denom + " cited sources shared";
   $("nd-cmp").innerHTML =
-    'Same top business both runs: <b style="color:var(--alert)">' + (o.top_business_same ? "yes" : "no") + '</b><br>' +
-    'Google local 3-pack, same query twice: <b>~90%</b>';
+    'Same top business both runs: <b style="color:var(--alert)">' + (o.top_business_same ? "yes" : "no") + '</b>';
   $("nd").style.borderColor = "var(--alert)";
 }
 
@@ -916,8 +926,8 @@ function renderCost(c){
 function applyEvent(ev){
   $("runid").textContent = ev.run_id;
   renderAgent(ev);
-  if (ev.score !== null && ev.score !== undefined) renderScore(ev.score);
   if (ev.facts) renderFacts(ev.facts);
+  if (ev.score !== null && ev.score !== undefined) renderScore(ev.score, ev.grade);
   if (ev.rank) renderRank(ev);
   if (ev.competitors && ev.competitors.length) renderStreet(ev);
   if (ev.url) renderUrl(ev.url);
@@ -940,6 +950,7 @@ function reset(){
   stop();
   livePoll.stop();
   facts = [];
+  factsReceived = 0;
   stageBusiness = null; stageCompetitors = []; stagePaid = false; stageSignVisible = false;
   const stageHost = $("stageShops");
   if (stageHost) stageHost.innerHTML = "";
@@ -1095,9 +1106,11 @@ function startPolling(runId){
           console.error("Vouch dashboard: /api/events returned an unexpected shape", body);
         } else {
           rows.forEach(row => {
+            // `since` is the last event id seen (the row's integer id), not a
+            // timestamp — the endpoint pages by id and returns rows ordered by id.
+            if (typeof row.id === "number" && row.id > since) since = row.id;
             const ev = parseEventRow(row);
             if (!ev) return;
-            if (typeof ev.ts === "number" && ev.ts > since) since = ev.ts;
             lastEventAt = Date.now();
             window.applyEvent(ev);
 
@@ -1107,11 +1120,26 @@ function startPolling(runId){
               bizNameApplied = true;
             }
 
+            const orchestratorDone = ev.agent === "orchestrator" && ev.state === "done";
             const orchestratorFailed = ev.agent === "orchestrator" && ev.state === "failed";
-            const outreachFinished = ev.agent === "outreach" && (ev.state === "done" || ev.state === "failed");
-            if (orchestratorFailed || outreachFinished){
+            // outreach settles well after the orchestrator reports done — keep
+            // polling quietly through that gap (bounded by the idle timeout).
+            const outreachSettled = ev.agent === "outreach" &&
+              (ev.state === "done" || ev.state === "failed" || ev.state === "paid");
+
+            if (orchestratorDone){
+              // Mark the run complete in the header — stop the elapsed-time
+              // clock — but keep polling for outreach's later done/failed/paid.
+              $("led").className = "led done";
+              if (clockTimer){ clearInterval(clockTimer); clockTimer = null; }
+            }
+            if (orchestratorFailed){
               stopped = true;
-              $("led").className = ev.state === "done" ? "led done" : "led";
+              $("led").className = "led";
+            }
+            if (outreachSettled){
+              stopped = true;
+              if (ev.state !== "failed") $("led").className = "led done";
             }
           });
         }

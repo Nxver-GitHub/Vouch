@@ -23,9 +23,8 @@ import type { AuditorResult } from './auditor';
 import { FACT_WEIGHTS } from './auditor';
 import { buildProbes, CLAUDE_MODEL, CLAUDE_TOKEN_ALLOWANCE_USD, type ProbeQuestion } from '../lib/probe';
 import {
-  assertBudget,
   escapeHtml,
-  recordSpend,
+  spendOrHalt,
   safeError,
   SYSTEM_DATA_ONLY,
   wrapUntrusted,
@@ -221,10 +220,10 @@ async function writeCopy(
 ): Promise<BuilderCopy> {
   if (!env.ANTHROPIC_API_KEY) throw new Error('builder: ANTHROPIC_API_KEY is not configured');
 
-  const budget = await assertBudget(env.DB, runId, COPY_CALL_MAX_USD);
-  if (!budget.ok) {
-    throw new Error(`builder: budget halted at $${budget.spent.toFixed(4)} of $${budget.cap.toFixed(2)}`);
-  }
+  // One atomic statement reserves the worst-case cost or halts. Booking before
+  // the call is deliberate: a request that times out is still billed upstream.
+  const reserved = await spendOrHalt(env.DB, runId, 'write', COPY_CALL_MAX_USD);
+  if (!reserved) throw new Error('builder: budget cap reached — copy call not made');
 
   const prompt = buildCopyPrompt(audit, probes, worst, neighborhood, city);
   const response = await fetch(ANTHROPIC_ENDPOINT, {
@@ -245,8 +244,6 @@ async function writeCopy(
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-
-  await recordSpend(env.DB, runId, 'write', COPY_CALL_MAX_USD);
 
   if (!response.ok) {
     const detail = await response.text();
@@ -341,7 +338,9 @@ function factTokens(audit: AuditorResult, neighborhood: string, city: string): R
     PHONE: f.phone ?? 'Not listed',
     PHONE_TEL: phoneDigits,
     PHONE_NOTE: '',
-    WEBSITE_URL: f.website ?? '',
+    // Scheme-checked: a `javascript:` website on a Google listing must never
+    // become an href on our zone. escapeHtml stops attribute breakout, not this.
+    WEBSITE_URL: /^https?:\/\//i.test(f.website ?? '') ? (f.website as string) : '',
     WEBSITE_LABEL: f.website ? f.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : 'Not listed',
     // Places (New) fieldmask verified in CLAUDE.md returns no price level — never invented.
     PRICE_RANGE: '',

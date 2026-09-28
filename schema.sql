@@ -29,8 +29,9 @@ CREATE TABLE IF NOT EXISTS runs (
   status          TEXT NOT NULL DEFAULT 'running', -- running|done|failed|halted_budget
   linear_issue_id TEXT,
   started_at      INTEGER NOT NULL,
-  finished_at     INTEGER,
-  FOREIGN KEY (business_id) REFERENCES businesses(id)
+  finished_at     INTEGER
+  -- No FK: the run row is created before the business is resolved (business_id
+  -- is '' until the Auditor fills it in). Production D1 was created this way.
 );
 
 CREATE TABLE IF NOT EXISTS audits (
@@ -135,3 +136,13 @@ CREATE TABLE IF NOT EXISTS outreach (
   error        TEXT,
   created_at   INTEGER NOT NULL
 );
+
+-- Fixed-window rate limiter used by security.throttle(). Rows expire by
+-- expires_at; the reset path overwrites them. Missing from the file until the
+-- 2026-09-28 review even though production had it — keep schema.sql complete.
+CREATE TABLE IF NOT EXISTS throttle (
+  key        TEXT PRIMARY KEY,
+  count      INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_throttle_expires ON throttle(expires_at);

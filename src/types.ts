@@ -63,6 +63,8 @@ export type AgentEvent = {
   /** "shops down the street" — lit = this competitor was cited, you weren't */
   competitors?: Array<{ name: string; lit: boolean }>;
   score?: number;
+  /** Server-computed band for `score`; the dashboard renders it verbatim. */
+  grade?: string;
   rank?: [number, number];
   url?: string | null;
   message: string;

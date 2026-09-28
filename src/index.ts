@@ -203,10 +203,13 @@ app.post('/api/run', async (c) => {
 });
 
 app.get('/api/events/:runId', async (c) => {
+  // `since` is the last event ID the client has seen, not a timestamp: a
+  // batched flush writes many rows in the same millisecond, and paging on ts
+  // dropped or reordered them.
   const since = Number(c.req.query('since') ?? 0);
   const { results } = await c.env.DB.prepare(
     'SELECT id, run_id, agent, state, message, payload_json, ts FROM events ' +
-      'WHERE run_id = ? AND ts > ? ORDER BY ts ASC LIMIT 200',
+      'WHERE run_id = ? AND id > ? ORDER BY id ASC LIMIT 200',
   )
     .bind(c.req.param('runId'), Number.isFinite(since) ? since : 0)
     .all();
@@ -254,7 +257,7 @@ app.post('/slack/interactions', async (c) => {
       c.executionCtx.waitUntil(
         approveOutreach(c.env, businessId, userId).then((result) =>
           respondToInteraction(responseUrl, approvalText(result, userId)),
-        ),
+        ).catch(() => undefined),
       );
     }
   } catch {

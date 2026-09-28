@@ -78,6 +78,7 @@ class EventBuffer {
           business: e.business,
           competitors: e.competitors,
           score: e.score,
+          grade: e.grade,
           rank: e.rank,
           url: e.url,
           facts: e.facts,
@@ -127,6 +128,8 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
   const events = new EventBuffer(runId);
   const cap = Number(env.RUN_BUDGET_USD) || 2;
   let issueId: string | null = null;
+  let businessId = '';
+  let failed = false;
 
   try {
     events.add('orchestrator', 'working', `Run started, cap $${cap.toFixed(2)}.`);
@@ -145,16 +148,14 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
     });
 
     const headline = worstFact(audit);
+    // The Auditor already emitted the wrong/missing sheet; re-sending `facts`
+    // here made the dashboard render every row twice. Grade travels with the
+    // score so the dashboard prints the server's band, never its own.
+    businessId = audit.businessId;
     events.add('auditor', 'done', headline, {
       business: { slug: audit.slug, name: audit.facts.name, lit: false },
       score: audit.score,
-      facts: audit.verdicts.map((v) => ({
-        key: v.factKey,
-        stated: v.stated,
-        expected: v.expected,
-        engine: v.engine,
-        verdict: v.verdict,
-      })),
+      grade: audit.grade,
       overlap: audit.overlap ?? undefined,
     });
     await say(env, 'auditor', `Score *${audit.score}/100* (${audit.grade}). ${headline}`);
@@ -217,7 +218,8 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
         pageUrl,
         paymentUrl,
       });
-      events.add('outreach', 'waiting', `Draft posted to Slack — awaiting approval (to ${draft.to}).`);
+      // The recipient stays out of the public event stream.
+      events.add('outreach', 'waiting', 'Draft posted to Slack — awaiting approval.');
       if (!draft.slackOk) {
         events.add('outreach', 'failed', `Slack post failed: ${draft.slackError ?? 'unknown error'}`);
       }
@@ -240,12 +242,20 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
   } catch (e) {
     // Fail loudly and visibly. A silent stall on stage is worse than an error.
     const detail = safeError(e);
+    failed = true;
     events.add('orchestrator', 'failed', `Run halted: ${detail}`);
     await say(env, 'orchestrator', `:warning: Run halted — ${detail}`);
   } finally {
-    await events.flush(env);
-    await env.DB.prepare('UPDATE runs SET status = ?, finished_at = ? WHERE id = ?')
-      .bind('done', Date.now(), runId)
+    // A flush failure must not leave the run stuck in 'running'.
+    try {
+      await events.flush(env);
+    } catch {
+      /* the status row below is the record of last resort */
+    }
+    await env.DB.prepare(
+      'UPDATE runs SET status = ?, finished_at = ?, business_id = CASE WHEN ? != \'\' THEN ? ELSE business_id END WHERE id = ?',
+    )
+      .bind(failed ? 'failed' : 'done', Date.now(), businessId, businessId, runId)
       .run();
   }
 }

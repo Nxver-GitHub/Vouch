@@ -138,6 +138,7 @@ async function emit(env: Env, runId: string, draft: EventDraft): Promise<AgentEv
     business: event.business,
     competitors: event.competitors,
     score: event.score,
+    grade: event.grade,
     rank: event.rank,
     url: event.url,
     facts: event.facts,
@@ -433,7 +434,20 @@ export async function classify(
   for (const outcome of outcomes) {
     if (!outcome.ok) continue;
     steps.take(`classify:${outcome.probe.key}`);
-    const fact = await classifyOne(env, runId, outcome.probe, outcome.answer);
+    let fact: GradedFact;
+    try {
+      fact = await classifyOne(env, runId, outcome.probe, outcome.answer);
+    } catch (error: unknown) {
+      // One malformed Jev answer must not discard the other five verdicts and
+      // the money already spent on them. It becomes a review item instead.
+      review.push({
+        factKey: outcome.probe.factKey,
+        engine: outcome.answer.engine,
+        confidence: 0,
+        reason: `classification failed: ${safeError(error)}`,
+      });
+      continue;
+    }
     if (fact.confidence < CONFIDENCE_REVIEW) {
       review.push({
         factKey: fact.verdict.factKey,
@@ -519,7 +533,9 @@ export async function overlapCheck(
   const probe = buildOverlapProbe(facts, city);
   const engine: Engine = ACTIVE_ENGINES[0] ?? 'claude';
 
+  const tsA = Date.now();
   const first = await runOneProbe(env, runId, engine, probe, steps);
+  const tsB = Date.now();
   const second = await runOneProbe(env, runId, engine, probe, steps);
   if (!first.ok || !second.ok) {
     const reason = !first.ok ? first.error : !second.ok ? second.error : 'unknown';
@@ -541,8 +557,9 @@ export async function overlapCheck(
   const sameTop = answers.same_top;
   if (!isNoul(sameTop)) throw new Error('auditor: jev returned an unexpected same_top shape');
 
-  const a = { ts: Date.now(), sources: [...first.answer.sources] };
-  const b = { ts: Date.now(), sources: [...second.answer.sources] };
+  // Stamped when each ask was SENT, so the gap the dashboard prints is real.
+  const a = { ts: tsA, sources: [...first.answer.sources] };
+  const b = { ts: tsB, sources: [...second.answer.sources] };
   const pct = overlapPct(a.sources, b.sources);
 
   await env.DB.prepare(
