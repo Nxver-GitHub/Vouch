@@ -24,7 +24,7 @@
 
 import type { Env, AgentEvent, AgentName } from '../types';
 import type { StartRunInput, StartRunResult, Waitable } from './orchestrator';
-import { createThread, getThread, listChildTasks, listMessages, messageText } from '../lib/brainbase';
+import { createThread, getThread, listChildTasks, listMessages, messageText, type BrainbaseTask } from '../lib/brainbase';
 import { safeError } from '../lib/security';
 
 /** Up to two Brainbase calls per poll; 10s keeps a 30-minute run to ~360 subrequests. */
@@ -75,6 +75,23 @@ function roleMap(env: Env): Map<string, AgentName> {
   return map;
 }
 
+/**
+ * The hand-off to follow among a task's children: the next agent's task that
+ * has progressed furthest. Duplicate hand-offs happen, and an unstarted copy
+ * ('idle') must not be followed while a working one exists.
+ */
+function pickHandoff(items: readonly BrainbaseTask[], roles: Map<string, AgentName>, role: AgentName): BrainbaseTask | undefined {
+  const rank = (s: string): number => {
+    const k = s.toLowerCase();
+    if (k === 'idle') return 0;
+    if (outcomeOf(k) === null) return 1; // running
+    return 2; // settled: done, failed or waiting
+  };
+  return items
+    .filter((t) => roles.get(t.agent_id) === role)
+    .sort((a, b) => rank(b.status) - rank(a.status))[0];
+}
+
 /** Last assistant message of a task, flattened and clipped, for the agent's row. */
 async function summaryOf(env: Env, taskId: string): Promise<string> {
   const messages = await listMessages(env, taskId);
@@ -116,8 +133,9 @@ async function runOnBrainbase(env: Env, runId: string, agentId: string, input: S
     const deadline = Date.now() + RUN_DEADLINE_MS;
 
     // The tip is the furthest agent reached so far; every agent before it is settled.
-    let tip: { taskId: string; role: AgentName; status: string } = {
+    let tip: { taskId: string; parentId: string | null; role: AgentName; status: string } = {
       taskId: created.data.thread_id,
+      parentId: null,
       role: 'orchestrator',
       status: created.data.status,
     };
@@ -131,12 +149,24 @@ async function runOnBrainbase(env: Env, runId: string, agentId: string, input: S
       // 1. Did the tip hand off? A child task on the next agent moves the tip forward.
       if (nextRole) {
         const children = await listChildTasks(env, tip.taskId);
-        const next = children.ok ? children.data.items.find((t) => roles.get(t.agent_id) === nextRole) : undefined;
+        const next = children.ok ? pickHandoff(children.data.items, roles, nextRole) : undefined;
         if (next) {
           const summary = await summaryOf(env, tip.taskId);
           await emit(env, runId, tip.role, 'done', summary || `Handed off to ${nextRole}.`);
           await emit(env, runId, nextRole, 'working', next.title || 'Started.');
-          tip = { taskId: next.id, role: nextRole, status: next.status };
+          tip = { taskId: next.id, parentId: tip.taskId, role: nextRole, status: next.status };
+          settledAs = null;
+          continue;
+        }
+      }
+
+      // 1b. An agent sometimes hands off more than once. If the copy we follow is
+      // still 'idle' (never started), switch to a sibling copy that did start.
+      if (tip.parentId && tip.status.toLowerCase() === 'idle') {
+        const siblings = await listChildTasks(env, tip.parentId);
+        const started = siblings.ok ? pickHandoff(siblings.data.items, roles, tip.role) : undefined;
+        if (started && started.id !== tip.taskId && started.status.toLowerCase() !== 'idle') {
+          tip = { ...tip, taskId: started.id, status: started.status };
           settledAs = null;
           continue;
         }
