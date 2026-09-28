@@ -278,3 +278,50 @@ Carried from the craft floor and from `BRIEF.md` §11:
 - No ambient pulses, no scattered entrance animations, no fades.
 - No claim that a Vouch page makes an engine recommend a business. No llms.txt claims.
   No crawl-to-citation latency numbers. We measure; we do not assert causation.
+
+---
+
+## 11. Answer pages (`design/profile.html` + `src/agents/builder.ts`)
+
+The published business pages adopt the tokens above: `--ground` paper, `--ink`,
+hairlines instead of boxes, Instrument Serif for the **H1 only**, Plex Sans for
+prose, Plex Mono for the fact-box and hours **values**. Secondary ink on these
+pages is `--ink-2` (6.07:1); `--ink-3` is not declared there at all, because
+every secondary string on the page is small. The verification stamp carries the
+benchmark plate from §6 — same frame, same datum glyph, same 1.3 stroke —
+reading `Vouch` over `28 Sep 2026 · v2026-09-28.1`. No kicker above the H1 (§10).
+
+### The rule that outranks layout here
+
+> **A section renders only if every fact in it has a verified source.**
+
+Blank slots are what made the first generation of these pages read as doorway
+spam. The template holds no repeating numbered slots: sections are assembled by
+`renderX()` functions in `builder.ts`, each returning an empty fragment when its
+source is absent. Today that means the comparison table, the services list, the
+price row, the transit row, the hours-exception line and the JSON-LD `geo` and
+`priceRange` nodes never render — we hold no source for any of them. Adding a
+fact means adding a `renderX()`, never a placeholder row.
+
+An absence that a reader would otherwise mistake for an error is stated once, in
+plain words — *"No public phone number listed"*, as text, never as a `tel:` link
+with nothing behind it.
+
+### Order
+
+H1 question → answer paragraph (40–80 words) → byline → fact box → hours → FAQ
+→ verification stamp → footer. One `<main>`, zero CDN JS, Google Fonts
+stylesheet with system fallbacks.
+
+### What the page may and may not say
+
+- The byline reads *"Checked against Google Business Profile"*. An engine under
+  test is **not** a source and is never counted as one; engines are named only in
+  the disclosure line of the verification stamp.
+- Never print the neighbourhood when it equals the city.
+- No run ids, no "probes", no "verification run" — no instrument vocabulary
+  reaches a customer. The stamp says *"Re-checked on every audit run."*
+- A `disputed` fact that the page states carries one honest line beneath it in
+  `--verdict`: *"Some AI assistants report different hours. The hours above are
+  from Google Business Profile, read on {date}."* Never on a `correct` fact.
+- §10 still applies in full, and BRIEF.md §11 above it.

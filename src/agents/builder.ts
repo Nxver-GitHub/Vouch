@@ -6,8 +6,14 @@
  * cities via this page shape in research; a generic profile page did not).
  * See design/profile.html for the rationale, kept in sync with this file.
  *
- * Pipeline: load template -> write copy (Claude) -> fill tokens (escaped) ->
- * publish to R2 -> health-check -> persist -> emit events.
+ * Pipeline: load template -> write copy (Claude) -> assemble sections (every
+ * dynamic value escaped by the single `h` funnel) -> publish to R2 ->
+ * health-check -> persist -> emit events.
+ *
+ * THE RULE THAT SHAPES THIS FILE: a section renders only if every fact in it
+ * has a verified source. Each renderX() below returns an empty fragment when
+ * its source is absent. Blank slots are what made the first generation of
+ * these pages read as doorway spam.
  *
  * D1 QUERY COUNT — capped at 3 round trips (the Auditor already spends ~40 of
  * the 50-per-invocation free-tier ceiling): 1) SELECT neighborhood/city, the
@@ -18,7 +24,8 @@
  * stays visible on the dashboard. Nothing else here touches D1.
  */
 
-import type { AgentEvent, Env, FactVerdict } from '../types';
+import type { AgentEvent, Engine, Env, FactVerdict, PlaceFacts } from '../types';
+import { ENGINE_VERSION } from '../types';
 import type { AuditorResult } from './auditor';
 import { FACT_WEIGHTS } from './auditor';
 import { buildProbes, CLAUDE_MODEL, CLAUDE_TOKEN_ALLOWANCE_USD, type ProbeQuestion } from '../lib/probe';
@@ -57,7 +64,7 @@ export type BuilderResult = {
 };
 
 /** The only thing an LLM is trusted to write here: prose, not facts. */
-type BuilderCopy = {
+export type BuilderCopy = {
   h1Question: string;
   answerParagraph: string;
   metaDescription: string;
@@ -149,7 +156,8 @@ function buildCopyPrompt(
     name: audit.facts.name,
     category: audit.facts.category,
     city,
-    neighborhood,
+    // Never hand the model "San Francisco / San Francisco" to join up.
+    neighborhood: placeLine(neighborhood, city) === city ? null : neighborhood,
     address: audit.facts.address,
     phone: audit.facts.phone,
     hours: audit.facts.hours,
@@ -287,10 +295,14 @@ function parseAddress(address: string | null): AddressParts {
   return { street, locality, region: match ? match[1] : regionZip, postal: match ? match[2] : '' };
 }
 
-/** `hours` is weekdayDescriptions[], Monday-first per Places (New) docs. */
+/**
+ * `hours` is weekdayDescriptions[], Monday-first per Places (New) docs.
+ * Returns '' when the day is not listed — the caller drops the row rather
+ * than printing "Hours not listed" into a table of facts.
+ */
 function hoursLine(hours: readonly string[], day: string): string {
-  const line = hours.find((h) => h.toLowerCase().startsWith(`${day.toLowerCase()}:`));
-  if (!line) return 'Hours not listed';
+  const line = hours.find((entry) => entry.toLowerCase().startsWith(`${day.toLowerCase()}:`));
+  if (!line) return '';
   return line.slice(line.indexOf(':') + 1).trim() || 'Closed';
 }
 
@@ -319,160 +331,547 @@ function pluralize(word: string): string {
   return /s$/i.test(word) ? word : `${word}s`;
 }
 
-// Token assembly — one place every {{TOKEN}} gets a value.
-function factTokens(audit: AuditorResult, neighborhood: string, city: string): Record<string, string> {
-  const f = audit.facts;
-  const addr = parseAddress(f.address);
-  const phoneDigits = (f.phone ?? '').replace(/[^\d+]/g, '');
-  return {
-    BUSINESS_NAME: f.name,
-    SLUG: audit.slug,
-    CATEGORY: f.category ?? 'Local business',
-    CATEGORY_PLURAL: pluralize(f.category ?? 'local business'),
-    NEIGHBORHOOD: neighborhood,
-    CITY: city,
-    STREET_ADDRESS: addr.street,
-    LOCALITY: addr.locality,
-    REGION: addr.region,
-    POSTAL_CODE: addr.postal,
-    ADDRESS_NOTE: '',
-    PHONE: f.phone ?? 'Not listed',
-    PHONE_TEL: phoneDigits,
-    PHONE_NOTE: '',
-    // Scheme-checked: a `javascript:` website on a Google listing must never
-    // become an href on our zone. escapeHtml stops attribute breakout, not this.
-    WEBSITE_URL: /^https?:\/\//i.test(f.website ?? '') ? (f.website as string) : '',
-    WEBSITE_LABEL: f.website ? f.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : 'Not listed',
-    // Places (New) fieldmask verified in CLAUDE.md returns no price level — never invented.
-    PRICE_RANGE: '',
-    PRICE_NOTE: 'Not listed by Google',
-    RATING: f.rating != null ? f.rating.toFixed(1) : 'Not yet rated',
-    REVIEW_COUNT: String(f.rating_count ?? 0),
-    RATING_SOURCE: 'Google',
-    // Same fieldmask carries no geo — never invented; left blank rather than guessed.
-    LAT: '',
-    LNG: '',
-    TRANSIT_NOTE: '',
-  };
+/* ---------------------- the one escaping funnel ----------------------------- */
+
+/** A fragment whose every dynamic value has already been through escapeHtml. */
+export type Html = { readonly __html: string };
+
+/** Marks a string as already-escaped. Only `h` and `jsonLdScript` may call it. */
+function raw(value: string): Html {
+  return { __html: value };
 }
 
-function hoursTokens(hours: readonly string[]): Record<string, string> {
-  const tokens: Record<string, string> = { HOURS_EXCEPTIONS: '' };
-  for (const day of WEEKDAYS) {
-    const line = hoursLine(hours, day);
-    const key = day.slice(0, 3).toUpperCase();
-    tokens[`HOURS_${key}`] = line;
-    const { open, close } = openClose(line);
-    tokens[`OPEN_${key}`] = open;
-    tokens[`CLOSE_${key}`] = close;
+function isHtml(value: unknown): value is Html {
+  return typeof value === 'object' && value !== null && '__html' in value;
+}
+
+function fragment(value: unknown): string {
+  if (isHtml(value)) return value.__html;
+  if (Array.isArray(value)) return value.map(fragment).join('');
+  return escapeHtml(value);
+}
+
+/**
+ * THE escape funnel. Every dynamic value that reaches the page passes through
+ * escapeHtml exactly once, here: a string is escaped, an Html fragment is
+ * passed through, an array is joined. Markup in this file is built no other
+ * way, so there is no second place for an unescaped value to slip in.
+ */
+function h(strings: TemplateStringsArray, ...values: readonly unknown[]): Html {
+  let out = strings[0] ?? '';
+  for (let i = 0; i < values.length; i++) {
+    out += fragment(values[i]);
+    out += strings[i + 1] ?? '';
   }
-  return tokens;
+  return raw(out);
 }
 
-function faqTokens(probes: readonly ProbeQuestion[], answers: readonly string[]): Record<string, string> {
-  const tokens: Record<string, string> = {};
-  probes.forEach((probe, i) => {
-    tokens[`FAQ_${i + 1}_Q`] = probe.text;
-    tokens[`FAQ_${i + 1}_A`] = answers[i] ?? '';
-  });
-  for (let i = probes.length; i < 6; i++) {
-    tokens[`FAQ_${i + 1}_Q`] = '';
-    tokens[`FAQ_${i + 1}_A`] = '';
-  }
-  return tokens;
+const EMPTY: Html = raw('');
+
+/* -------------------------------- page model -------------------------------- */
+
+type Service = { name: string; detail: string };
+type Alternative = { name: string; bestFor: string };
+type Faq = { question: string; answer: string };
+
+/** Everything the renderers are allowed to know. Assembled once, in code. */
+type PageModel = {
+  slug: string;
+  name: string;
+  category: string | null;
+  categoryPlural: string;
+  /** "Mission District, San Francisco" — or just the city when they are equal. */
+  place: string;
+  address: AddressParts;
+  /** No verified source at this SKU. The field stays so a real one can fill it. */
+  addressNote: string;
+  phone: string | null;
+  phoneTel: string;
+  phoneNote: string;
+  website: string | null;
+  websiteLabel: string;
+  rating: number | null;
+  ratingCount: number;
+  hours: readonly string[];
+  hoursExceptions: string;
+  services: readonly Service[];
+  alternatives: readonly Alternative[];
+  faqs: readonly Faq[];
+  disputed: ReadonlySet<FactVerdict['factKey']>;
+  engines: readonly Engine[];
+  /** ISO date the ground truth was read. */
+  readOn: string;
+  /** "28 September 2026" — the human date on the stamp. */
+  checkedOn: string;
+  /** "28 Sep 2026" — the compact date engraved on the benchmark plate. */
+  plateDate: string;
+};
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const;
+
+/** Formatted in code, in UTC, so two runs of the same page agree. */
+function longDate(d: Date): string {
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-/** AuditorResult carries no `competitors` field, so ALT rows are left blank
- * rather than invented — a fabricated claim about a real third-party
- * business is a trust/defamation risk this file will not take. Flagged. */
-function serviceAndCompareTokens(f: AuditorResult['facts']): Record<string, string> {
-  const tokens: Record<string, string> = {
-    SERVICE_1: f.category ?? '',
-    SERVICE_1_DETAIL: f.category ? 'As categorized by Google' : '',
-    SERVICES_CAVEAT: 'Full current offerings are best confirmed by phone or the website above.',
-    COMPARE_CAPTION: 'Verified facts only — unconfirmed comparisons are left blank, not estimated.',
-    SELF_BEST_FOR: f.category ?? 'the closest verified option',
-    SELF_PRICE: 'Not tracked',
-    SELF_WAIT: 'Not tracked',
-    COMPARE_METHOD:
-      'This table is limited to facts confirmed against Google Business Profile; nothing here is estimated.',
-  };
-  for (let i = 2; i <= 5; i++) {
-    tokens[`SERVICE_${i}`] = '';
-    tokens[`SERVICE_${i}_DETAIL`] = '';
-  }
-  for (let i = 1; i <= 4; i++) {
-    tokens[`ALT_${i}_NAME`] = '';
-    tokens[`ALT_${i}_BEST_FOR`] = '';
-    tokens[`ALT_${i}_PRICE`] = '';
-    tokens[`ALT_${i}_WAIT`] = '';
-  }
-  return tokens;
+function shortDate(d: Date): string {
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
 }
 
-function metaTokens(audit: AuditorResult, runId: string, now: number): Record<string, string> {
-  const engines = new Set(audit.verdicts.map((v) => v.engine));
-  const sourceCount = engines.size + 1; // + Google Places, our ground truth
-  const verified = new Date(now);
-  return {
-    RUN_ID: runId,
-    SOURCE_COUNT: String(sourceCount),
-    LAST_VERIFIED: verified.toUTCString(),
-    LAST_VERIFIED_SHORT: verified.toISOString().slice(0, 10),
-    RATING_READ_ON: verified.toISOString().slice(0, 10),
-    AUTHOR_LINE: 'the Vouch verification run',
-    VERIFIED_SOURCES: [...engines, 'Google Business Profile'].join(', '),
-    // Re-verification happens per audit run — no cron is wired up here, so no
-    // cadence claim is made beyond that (see CLAUDE.md §11, no causal claims).
-    VERIFY_CADENCE: 'each audit run',
-  };
+/** Never print "San Francisco, San Francisco". */
+function placeLine(neighborhood: string, city: string): string {
+  const n = neighborhood.trim();
+  const c = city.trim();
+  return n === '' || n.toLowerCase() === c.toLowerCase() ? c : `${n}, ${c}`;
 }
 
-function buildTokens(
+const ENGINE_LABEL: Readonly<Record<Engine, string>> = {
+  openai: 'OpenAI',
+  gemini: 'Gemini',
+  claude: 'Claude',
+};
+
+/**
+ * Places at this SKU returns ONE category label and no service list. The
+ * category is a label, not an offer: a one-item section reading "Bakery" tells
+ * the owner we know nothing about them, so the category-only case collapses to
+ * no section at all. A real source (menu, owner input) appends below and the
+ * section starts rendering on its own.
+ */
+function servicesFromFacts(facts: PlaceFacts): readonly Service[] {
+  const items: Service[] = [];
+  if (facts.category) items.push({ name: facts.category, detail: 'As categorised by Google' });
+  return items.length <= 1 ? [] : items;
+}
+
+function buildModel(
   audit: AuditorResult,
   copy: BuilderCopy,
   probes: readonly ProbeQuestion[],
   neighborhood: string,
   city: string,
-  runId: string,
   now: number,
-): Record<string, string> {
+): PageModel {
+  const f = audit.facts;
+  const when = new Date(now);
+  // Digits only — a `tel:` href is a dial string, not a display string.
+  const digits = (f.phone ?? '').replace(/\D/g, '');
+  // Scheme-checked: a `javascript:` website on a Google listing must never
+  // become an href on our zone. escapeHtml stops attribute breakout, not this.
+  const website = /^https?:\/\//i.test(f.website ?? '') ? (f.website as string) : null;
+
   return {
-    H1_QUESTION: copy.h1Question,
-    ANSWER_PARAGRAPH: copy.answerParagraph,
-    META_DESCRIPTION: copy.metaDescription,
-    ...factTokens(audit, neighborhood, city),
-    ...hoursTokens(audit.facts.hours),
-    ...faqTokens(probes, copy.faqAnswers),
-    ...serviceAndCompareTokens(audit.facts),
-    ...metaTokens(audit, runId, now),
+    slug: audit.slug,
+    name: f.name,
+    category: f.category,
+    categoryPlural: pluralize(f.category ?? 'local business'),
+    place: placeLine(neighborhood, city),
+    address: parseAddress(f.address),
+    addressNote: '',
+    phone: digits.length >= 7 ? f.phone : null,
+    phoneTel: digits,
+    phoneNote: '',
+    website,
+    websiteLabel: website ? website.replace(/^https?:\/\//i, '').replace(/\/$/, '') : '',
+    rating: f.rating,
+    ratingCount: f.rating_count ?? 0,
+    hours: f.hours,
+    hoursExceptions: '',
+    services: servicesFromFacts(f),
+    // AuditorResult carries no competitor facts. Inventing a claim about a real
+    // third-party business is a defamation risk this file will not take.
+    alternatives: [],
+    faqs: probes
+      .map((probe, i) => ({ question: probe.text, answer: copy.faqAnswers[i] ?? '' }))
+      .filter((faq) => faq.question.trim() !== '' && faq.answer.trim() !== ''),
+    disputed: new Set(audit.verdicts.filter((v) => v.verdict === 'disputed').map((v) => v.factKey)),
+    engines: [...new Set(audit.verdicts.map((v) => v.engine))],
+    readOn: when.toISOString().slice(0, 10),
+    checkedOn: longDate(when),
+    plateDate: shortDate(when),
   };
 }
 
-/** Every value goes through escapeHtml here, and only here — one funnel. */
-function fillTemplate(html: string, tokens: Readonly<Record<string, string>>): string {
-  let out = html;
-  for (const [key, value] of Object.entries(tokens)) {
-    out = out.replaceAll(`{{${key}}}`, escapeHtml(value));
+/* --------------------------------- sections --------------------------------- */
+/* Each renderX returns EMPTY when its source is absent. Nothing below prints a
+   dash, a placeholder row, or the word "unknown" into a page of facts. */
+
+function formatAddress(a: AddressParts): string {
+  const tail = `${a.region} ${a.postal}`.trim();
+  return [a.street, a.locality, tail].filter((part) => part !== '').join(', ');
+}
+
+/** Wording per fact, so the sentence stays grammatical. */
+const DISPUTED_SENTENCE: Partial<Record<FactVerdict['factKey'], (readOn: string) => string>> = {
+  hours: (d) =>
+    `Some AI assistants report different hours. The hours above are from Google Business Profile, read on ${d}.`,
+  phone: (d) =>
+    `Some AI assistants report a different phone number. The number above is from Google Business Profile, read on ${d}.`,
+  address: (d) =>
+    `Some AI assistants report a different address. The address above is from Google Business Profile, read on ${d}.`,
+};
+
+/** Only for facts the audit marked `disputed` AND that this page actually states. */
+function disputedText(model: PageModel, key: FactVerdict['factKey']): string {
+  if (!model.disputed.has(key)) return '';
+  const write = DISPUTED_SENTENCE[key];
+  return write ? write(model.readOn) : '';
+}
+
+function note(text: string): Html {
+  return text === '' ? EMPTY : h`<span class="note">${text}</span>`;
+}
+
+function disputedMark(text: string): Html {
+  return text === '' ? EMPTY : h`<span class="note disputed">${text}</span>`;
+}
+
+function factRow(label: string, value: Html, notes: readonly Html[]): Html {
+  return h`
+          <div class="row">
+            <dt>${label}</dt>
+            <dd>${value}${notes}</dd>
+          </div>`;
+}
+
+/** Never a focusable dead link: with no number this is plain text. */
+function renderPhoneValue(model: PageModel): Html {
+  if (!model.phone) return h`No public phone number listed`;
+  return h`<a href="tel:${model.phoneTel}">${model.phone}</a>`;
+}
+
+function renderFacts(model: PageModel): Html {
+  const rows: Html[] = [];
+
+  const address = formatAddress(model.address);
+  if (address !== '') {
+    rows.push(
+      factRow('Address', h`${address}`, [
+        note(model.addressNote),
+        disputedMark(disputedText(model, 'address')),
+      ]),
+    );
   }
-  // Unused numbered slots (or anything we missed) degrade to blank, never raw.
-  const blanked = out.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
-  return dropEmptyFaqSlots(blanked);
+  rows.push(
+    factRow('Phone', renderPhoneValue(model), [
+      note(model.phoneNote),
+      disputedMark(disputedText(model, 'phone')),
+    ]),
+  );
+  if (model.website !== null) {
+    rows.push(
+      factRow('Website', h`<a href="${model.website}" rel="noopener">${model.websiteLabel}</a>`, []),
+    );
+  }
+  // "Not yet rated" is not a fact. No rating, no row — and no aggregateRating node.
+  if (model.rating !== null && model.ratingCount > 0) {
+    rows.push(
+      factRow('Rating', h`${model.rating.toFixed(1)} out of 5, from ${String(model.ratingCount)} reviews`, [
+        note(`Source: Google Business Profile, read ${model.readOn}`),
+      ]),
+    );
+  }
+  // No price row: the Places fieldmask we pay for carries no price level.
+  // No "getting there" row: we hold no transit source and will not invent one.
+  if (rows.length === 0) return EMPTY;
+
+  return h`
+  <section>
+    <h2>${model.name} at a glance</h2>
+    <p class="sub">Address, phone and rating as Google Business Profile lists them.</p>
+
+    <div class="facts">
+      <dl>${rows}
+      </dl>
+    </div>
+  </section>
+`;
+}
+
+function renderHours(model: PageModel): Html {
+  const rows: Html[] = [];
+  for (const day of WEEKDAYS) {
+    const line = hoursLine(model.hours, day);
+    if (line === '') continue;
+    rows.push(h`
+        <tr><th scope="row">${day}</th><td>${line}</td></tr>`);
+  }
+  if (rows.length === 0) return EMPTY;
+
+  const exceptions = model.hoursExceptions === '' ? EMPTY : h`
+    <p class="note">${model.hoursExceptions}</p>`;
+  const dispute = disputedText(model, 'hours');
+  const disputeLine = dispute === '' ? EMPTY : h`
+    <p class="note disputed">${dispute}</p>`;
+
+  return h`
+  <section>
+    <h2>Opening hours</h2>
+    <p class="sub">Written out for every day of the week.</p>
+
+    <table class="hours">
+      <tbody>${rows}
+      </tbody>
+    </table>${exceptions}${disputeLine}
+  </section>
+`;
+}
+
+function renderServices(model: PageModel): Html {
+  if (model.services.length === 0) return EMPTY;
+  const items = model.services.map((service) => h`
+      <li><b>${service.name}</b> — <span>${service.detail}</span></li>`);
+  return h`
+  <section>
+    <h2>What ${model.name} offers</h2>
+    <p class="sub">Stated plainly so it can be quoted.</p>
+
+    <ul class="services">${items}
+    </ul>
+    <p>Current offerings are best confirmed with the business directly.</p>
+  </section>
+`;
+}
+
+const MIN_VERIFIED_ALTERNATIVES = 2;
+
+/**
+ * Omitted entirely unless there are at least two verified alternatives. There
+ * are none today, so this always returns EMPTY: a table with one self-row and
+ * four blank rows is doorway-page grammar, and it compares nothing.
+ */
+function renderComparison(model: PageModel): Html {
+  if (model.alternatives.length < MIN_VERIFIED_ALTERNATIVES) return EMPTY;
+  const rows = model.alternatives.map((alt) => h`
+        <tr><td>${alt.name}</td><td>${alt.bestFor}</td></tr>`);
+  return h`
+  <hr class="rule">
+
+  <section>
+    <h2>Other ${model.categoryPlural} in ${model.place}</h2>
+    <p class="sub">Only places we hold verified facts for are listed.</p>
+
+    <table class="compare">
+      <thead>
+        <tr><th style="width:42%">Place</th><th>Best for</th></tr>
+      </thead>
+      <tbody>
+        <tr class="self"><td>${model.name}</td><td>${model.category ?? ''}</td></tr>${rows}
+      </tbody>
+    </table>
+  </section>
+`;
+}
+
+function renderFaq(model: PageModel): Html {
+  if (model.faqs.length === 0) return EMPTY;
+  const items = model.faqs.map((faq) => h`
+      <div class="q">${faq.question}</div>
+      <p class="a">${faq.answer}</p>`);
+  return h`
+  <hr class="rule">
+
+  <section>
+    <h2>Questions people ask about ${model.name}</h2>
+
+    <div class="faq">${items}
+    </div>
+  </section>
+`;
 }
 
 /**
- * The template carries six numbered FAQ slots; the audit now asks five
- * questions. An unfilled slot must not ship as an empty heading or as a
- * schema.org Question with an empty name (invalid FAQPage). Both shapes are
- * exactly what the template emits after blanking, so the match is literal.
+ * The benchmark plate — DESIGN.md §6. Same frame, same datum glyph, same 1.3
+ * stroke as design/dashboard.html, with the `<use>` indirection flattened
+ * because this page ships no external assets and uses the mark once.
  */
-function dropEmptyFaqSlots(html: string): string {
-  return html
-    .replace(/\s*<div class="q"><\/div>\s*<p class="a"><\/p>/g, '')
-    .replace(
-      /,?\s*\{ "@type":"Question","name":"","acceptedAnswer":\{"@type":"Answer","text":""\} \}/g,
-      '',
-    );
+function renderPlate(model: PageModel): Html {
+  return h`<svg class="plate" viewBox="0 0 222 47" role="img" aria-label="Vouch benchmark plate">
+      <g fill="none" stroke="currentColor" stroke-width="1.3">
+        <rect x=".65" y=".65" width="220.7" height="45.7"/>
+        <rect x="4.65" y="4.65" width="212.7" height="37.7" opacity=".5"/>
+        <path d="M45 10.5v26" opacity=".5"/>
+        <circle cx="24.5" cy="23.5" r="5.775"/>
+        <path d="M24.5 15.275v16.45M16.275 23.5h16.45"/>
+      </g>
+      <text class="t-engine" x="58" y="22">Vouch</text>
+      <text class="t-meta" x="58" y="35">${model.plateDate} &middot; v${ENGINE_VERSION}</text>
+    </svg>`;
+}
+
+function renderVerification(model: PageModel): Html {
+  // The engines are named here, in the disclosure, and nowhere else: an engine
+  // under test is not one of this page's sources.
+  const named = model.engines.map((engine) => ENGINE_LABEL[engine]);
+  const compared = named.length === 0 ? EMPTY : h` Compared with answers from ${named.join(', ')}.`;
+  return h`
+  <div class="verified">
+    ${renderPlate(model)}
+    <div class="body">
+      <div class="h">Last checked</div>
+      <div class="when">${model.checkedOn}</div>
+      <div class="src">Checked against Google Business Profile.${compared} Re-checked on every audit run.</div>
+    </div>
+  </div>
+`;
+}
+
+function renderFooterContact(model: PageModel): Html {
+  const address = formatAddress(model.address);
+  const parts: Html[] = [h`${model.name}`];
+  if (address !== '') parts.push(h`${address}`);
+  parts.push(renderPhoneValue(model));
+  return h`<div>${parts.map((part, i) => (i === 0 ? part : h` &middot; ${part}`))}</div>`;
+}
+
+/* ---------------------------------- JSON-LD --------------------------------- */
+
+const JSON_LD_ESCAPES: Readonly<Record<string, string>> = {
+  '<': '\\u003c',
+  '>': '\\u003e',
+  '&': '\\u0026',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+};
+
+/**
+ * The only other place a value becomes markup, and deliberately a different
+ * funnel: HTML entity escaping inside a <script> body would corrupt the JSON
+ * itself. JSON.stringify guarantees well-formedness — the object is built in
+ * code, never by token substitution — and this escape map guarantees the
+ * payload cannot close the script element.
+ */
+function jsonLdScript(node: Record<string, unknown> | null): Html {
+  if (node === null) return EMPTY;
+  const json = JSON.stringify(node).replace(/[<>&\u2028\u2029]/g, (c) => JSON_LD_ESCAPES[c] ?? c);
+  return raw(`<script type="application/ld+json">\n${json}\n</script>`);
+}
+
+function openingHoursSpecification(hours: readonly string[]): Array<Record<string, string>> {
+  const spec: Array<Record<string, string>> = [];
+  for (const day of WEEKDAYS) {
+    const line = hoursLine(hours, day);
+    if (line === '') continue;
+    const { open, close } = openClose(line);
+    // Closed, or a line our parser could not read. Never guessed into schema.
+    if (open === '' || close === '') continue;
+    spec.push({ '@type': 'OpeningHoursSpecification', dayOfWeek: day, opens: open, closes: close });
+  }
+  return spec;
+}
+
+function localBusinessNode(model: PageModel, metaDescription: string): Record<string, unknown> {
+  const node: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `https://${model.slug}.usevouch.dev/#business`,
+    name: model.name,
+  };
+  if (metaDescription !== '') node.description = metaDescription;
+  if (model.website !== null) node.url = model.website;
+  if (model.phone !== null) node.telephone = model.phone;
+  if (model.address.street !== '') {
+    const address: Record<string, string> = {
+      '@type': 'PostalAddress',
+      streetAddress: model.address.street,
+      addressCountry: 'US',
+    };
+    if (model.address.locality !== '') address.addressLocality = model.address.locality;
+    if (model.address.region !== '') address.addressRegion = model.address.region;
+    if (model.address.postal !== '') address.postalCode = model.address.postal;
+    node.address = address;
+  }
+  // No `geo` and no `priceRange`: the fieldmask we pay for returns neither, and
+  // an empty node is worse than an absent one.
+  if (model.rating !== null && model.ratingCount > 0) {
+    node.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: model.rating.toFixed(1),
+      reviewCount: String(model.ratingCount),
+    };
+  }
+  const hours = openingHoursSpecification(model.hours);
+  if (hours.length > 0) node.openingHoursSpecification = hours;
+  return node;
+}
+
+/** Honest to the number of FAQs actually on the page — never a padded array. */
+function faqNode(model: PageModel): Record<string, unknown> | null {
+  if (model.faqs.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': `https://${model.slug}.usevouch.dev/#faq`,
+    mainEntity: model.faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+    })),
+  };
+}
+
+/* --------------------------------- assembly --------------------------------- */
+
+export type PageParts = {
+  tokens: Record<string, string>;
+  sections: Record<string, Html>;
+};
+
+export function buildPageParts(
+  audit: AuditorResult,
+  copy: BuilderCopy,
+  probes: readonly ProbeQuestion[],
+  neighborhood: string,
+  city: string,
+  now: number,
+): PageParts {
+  const model = buildModel(audit, copy, probes, neighborhood, city, now);
+  return {
+    tokens: {
+      SLUG: model.slug,
+      BUSINESS_NAME: model.name,
+      MASTHEAD_META: [model.category ?? '', model.place].filter((p) => p !== '').join(' · '),
+      H1_QUESTION: copy.h1Question,
+      ANSWER_PARAGRAPH: copy.answerParagraph,
+      META_DESCRIPTION: copy.metaDescription,
+      // Google Business Profile is the source. The engines under test are not
+      // sources, so they are not counted here.
+      BYLINE: `Published by Vouch · Checked against Google Business Profile · ${model.checkedOn}`,
+    },
+    sections: {
+      FACTS_SECTION: renderFacts(model),
+      HOURS_SECTION: renderHours(model),
+      SERVICES_SECTION: renderServices(model),
+      COMPARISON_SECTION: renderComparison(model),
+      FAQ_SECTION: renderFaq(model),
+      VERIFICATION_SECTION: renderVerification(model),
+      FOOTER_CONTACT: renderFooterContact(model),
+      JSON_LD: h`${jsonLdScript(localBusinessNode(model, copy.metaDescription))}
+${jsonLdScript(faqNode(model))}`,
+    },
+  };
+}
+
+/**
+ * Pure: template in, HTML out. Tokens are plain strings and go through
+ * escapeHtml; sections are fragments the `h` funnel already escaped. One pass,
+ * so a token's own value can never be rescanned as a slot, and an unknown slot
+ * degrades to blank rather than shipping a raw mustache.
+ */
+export function renderPage(
+  template: string,
+  tokens: Readonly<Record<string, string>>,
+  sections: Readonly<Record<string, Html>>,
+): string {
+  return template.replace(/\{\{([A-Z0-9_]+)\}\}/g, (_match, key: string) => {
+    const section = sections[key];
+    if (section !== undefined) return section.__html;
+    const token = tokens[key];
+    return token === undefined ? '' : escapeHtml(token);
+  });
 }
 
 /**
@@ -537,8 +936,8 @@ export async function runBuilder(env: Env, runId: string, audit: AuditorResult):
     emit({ state: 'writing', message: `asking ${CLAUDE_MODEL} to write the losing-question page` });
     const copy = await writeCopy(env, runId, audit, probes, worst, neighborhood, city);
 
-    const tokens = buildTokens(audit, copy, probes, neighborhood, city, runId, now);
-    const html = fillTemplate(template, tokens);
+    const { tokens, sections } = buildPageParts(audit, copy, probes, neighborhood, city, now);
+    const html = renderPage(template, tokens, sections);
 
     const r2Key = `${PROFILE_KEY_PREFIX}${audit.slug}.html`;
     await env.PROFILES.put(r2Key, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } });
