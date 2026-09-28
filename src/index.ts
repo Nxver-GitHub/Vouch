@@ -14,9 +14,11 @@
 import { Hono } from 'hono';
 import type { Env } from './types';
 import { handleWebhook } from './agents/revenue';
+import { startRun } from './agents/orchestrator';
 import { startBrainbaseRun } from './agents/brainbase';
 import { approveOutreach } from './agents/outreach';
 import {
+  requireRunToken,
   throttle,
   verifySlackSignature,
   verifyApproveToken,
@@ -134,23 +136,32 @@ app.get('/assets/:name', async (c) => {
  * ------------------------------------------------------------------ */
 
 /**
- * The money-spending endpoint. Every call starts a billed Brainbase run, and
- * it is PUBLIC — anyone on the site can start one. Two throttles stand in for
- * the token: per visitor, and a site-wide cap per day (RUN_DAILY_LIMIT).
+ * The money-spending endpoint. It is PUBLIC — anyone on the site can type a
+ * business and start a run — bounded by two throttles: per visitor, and a
+ * site-wide cap per day (RUN_DAILY_LIMIT). A valid RUN_ACCESS_TOKEN bypasses
+ * both caps so the public cannot starve an operator's own run.
+ *
+ * Two backends. The Worker pipeline (default) is the one that produces the
+ * score, the page, the payment link and the Slack draft. The Brainbase
+ * pipeline runs the same five roles as managed agents there; it is opt-in per
+ * request (`backend: "brainbase"`) or site-wide via RUN_BACKEND.
  */
 app.post('/api/run', async (c) => {
-  const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
-  const perVisitor = await throttle(c.env.DB, `run:${ip}`, 6, 3600); // 6 per hour
-  if (!perVisitor.allowed) {
-    return c.json({ error: 'rate_limited', used: perVisitor.used, limit: perVisitor.limit }, 429);
-  }
-  const dailyLimit = Number(c.env.RUN_DAILY_LIMIT) || 30;
-  const siteWide = await throttle(c.env.DB, 'run:all', dailyLimit, 86_400);
-  if (!siteWide.allowed) {
-    return c.json({ error: 'daily_limit_reached', used: siteWide.used, limit: siteWide.limit }, 429);
+  const operator = await requireRunToken(c.req.raw, c.env);
+  if (!operator) {
+    const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
+    const perVisitor = await throttle(c.env.DB, `run:${ip}`, 6, 3600); // 6 per hour
+    if (!perVisitor.allowed) {
+      return c.json({ error: 'rate_limited', used: perVisitor.used, limit: perVisitor.limit }, 429);
+    }
+    const dailyLimit = Number(c.env.RUN_DAILY_LIMIT) || 30;
+    const siteWide = await throttle(c.env.DB, 'run:all', dailyLimit, 86_400);
+    if (!siteWide.allowed) {
+      return c.json({ error: 'daily_limit_reached', used: siteWide.used, limit: siteWide.limit }, 429);
+    }
   }
 
-  let body: { name?: string; city?: string };
+  let body: { name?: string; city?: string; backend?: string };
   try {
     body = await c.req.json();
   } catch {
@@ -159,10 +170,11 @@ app.post('/api/run', async (c) => {
   const name = body.name?.trim();
   if (!name || name.length > 120) return c.json({ error: 'name required (max 120)' }, 400);
 
-  // Runs execute on Brainbase: the five Vouch agents are managed agents there.
-  let run: Awaited<ReturnType<typeof startBrainbaseRun>>;
+  const useBrainbase = body.backend === 'brainbase' || c.env.RUN_BACKEND === 'brainbase';
+  const start = useBrainbase ? startBrainbaseRun : startRun;
+  let run: Awaited<ReturnType<typeof startRun>>;
   try {
-    run = await startBrainbaseRun(c.env, c.executionCtx, {
+    run = await start(c.env, c.executionCtx, {
       name,
       city: body.city?.trim() || 'San Francisco',
     });
