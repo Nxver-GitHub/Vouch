@@ -427,10 +427,6 @@ ul.cites li.only{ color:var(--ink-2); }
       <span class="lbl">City</span>
       <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off">
     </label>
-    <label class="field">
-      <span class="lbl">Access token</span>
-      <input id="in-token" type="password" placeholder="run token" autocomplete="off">
-    </label>
     <button class="run" id="btn-run">Run</button>
     <button class="ghost" id="btn-reset">Reset</button>
   </section>
@@ -1010,32 +1006,13 @@ function play(){
 }
 
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city" || e.target.id === "in-token")) runRequested();
+  if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city")) runRequested();
 });
 
 /* ?demo=replay — autoplay for the wifi-off backup path */
 if (new URLSearchParams(location.search).get("demo") === "replay"){
   setTimeout(play, 400);
 }
-
-/* ============================================================
-   TOKEN PERSISTENCE
-   The access token lives only in memory and, best-effort, in
-   sessionStorage — never in the URL, never logged. sessionStorage
-   can throw (private browsing, blocked storage); every access is
-   wrapped so a blocked store never breaks the run button.
-   ============================================================ */
-(function tokenPersistence(){
-  const tokenInput = $("in-token");
-  if (!tokenInput) return;
-  try{
-    const saved = sessionStorage.getItem("vouch_run_token");
-    if (saved) tokenInput.value = saved;
-  }catch(e){ /* storage blocked — token just won't survive a reload */ }
-  tokenInput.addEventListener("input", () => {
-    try{ sessionStorage.setItem("vouch_run_token", tokenInput.value); }catch(e){}
-  });
-})();
 
 /* ============================================================
    EVENT POLLING — shared by ?run=<runId> page loads and by a
@@ -1154,7 +1131,7 @@ function startPolling(runId){
 }
 
 /* ============================================================
-   LIVE RUN — access token present in the field
+   LIVE RUN — every Run button press (public; throttled server-side)
    Starts a run via POST /api/run, reads the ndjson stream until
    the run id shows up, then hands off to the shared poller.
    ============================================================ */
@@ -1163,7 +1140,7 @@ function showRunStatus(text){
   $("led").className = "led";
 }
 
-async function runLive(token){
+async function runLive(){
   stop();          // halt any fixture playback in progress
   livePoll.stop();  // halt any previous poll loop
   reset();
@@ -1178,7 +1155,7 @@ async function runLive(token){
   try{
     res = await fetch("/api/run", {
       method: "POST",
-      headers: { "content-type": "application/json", "authorization": "Bearer " + token },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: name, city: city })
     });
   }catch(e){
@@ -1190,8 +1167,11 @@ async function runLive(token){
 
   if (!res.ok){
     let msg;
-    if (res.status === 401) msg = "bad token";
-    else if (res.status === 429) msg = "rate limited";
+    if (res.status === 429){
+      let err = "";
+      try{ err = (await res.json()).error || ""; }catch(e){}
+      msg = err === "daily_limit_reached" ? "daily run limit reached — try again tomorrow" : "too many runs — try again later";
+    }
     else msg = "run failed (status " + res.status + ")";
     console.error("Vouch dashboard: /api/run rejected the request:", res.status);
     showRunStatus(msg);
@@ -1247,10 +1227,10 @@ async function runLive(token){
   $("btn-run").disabled = false;
 }
 
+/* Every Run is a real run on Brainbase. The fixture playback stays
+   reachable via ?demo=replay only. */
 function runRequested(){
-  const token = ($("in-token") && $("in-token").value || "").trim();
-  if (token) runLive(token);
-  else play();
+  runLive();
 }
 
 $("btn-run").addEventListener("click", runRequested);

@@ -14,10 +14,9 @@
 import { Hono } from 'hono';
 import type { Env } from './types';
 import { handleWebhook } from './agents/revenue';
-import { startRun } from './agents/orchestrator';
+import { startBrainbaseRun } from './agents/brainbase';
 import { approveOutreach } from './agents/outreach';
 import {
-  requireRunToken,
   throttle,
   verifySlackSignature,
   verifyApproveToken,
@@ -135,19 +134,20 @@ app.get('/assets/:name', async (c) => {
  * ------------------------------------------------------------------ */
 
 /**
- * The money-spending endpoint. Every call costs real cash (Places $40/1k,
- * Claude search $10/1k, plus tokens), so it is authenticated AND throttled.
- * Fails closed: no RUN_ACCESS_TOKEN configured means no runs at all.
+ * The money-spending endpoint. Every call starts a billed Brainbase run, and
+ * it is PUBLIC — anyone on the site can start one. Two throttles stand in for
+ * the token: per visitor, and a site-wide cap per day (RUN_DAILY_LIMIT).
  */
 app.post('/api/run', async (c) => {
-  if (!(await requireRunToken(c.req.raw, c.env))) {
-    return c.json({ error: 'unauthorized' }, 401);
-  }
-
   const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
-  const verdict = await throttle(c.env.DB, `run:${ip}`, 10, 300); // 10 per 5 min
-  if (!verdict.allowed) {
-    return c.json({ error: 'rate_limited', used: verdict.used, limit: verdict.limit }, 429);
+  const perVisitor = await throttle(c.env.DB, `run:${ip}`, 3, 3600); // 3 per hour
+  if (!perVisitor.allowed) {
+    return c.json({ error: 'rate_limited', used: perVisitor.used, limit: perVisitor.limit }, 429);
+  }
+  const dailyLimit = Number(c.env.RUN_DAILY_LIMIT) || 10;
+  const siteWide = await throttle(c.env.DB, 'run:all', dailyLimit, 86_400);
+  if (!siteWide.allowed) {
+    return c.json({ error: 'daily_limit_reached', used: siteWide.used, limit: siteWide.limit }, 429);
   }
 
   let body: { name?: string; city?: string };
@@ -159,9 +159,10 @@ app.post('/api/run', async (c) => {
   const name = body.name?.trim();
   if (!name || name.length > 120) return c.json({ error: 'name required (max 120)' }, 400);
 
-  let run: Awaited<ReturnType<typeof startRun>>;
+  // Runs execute on Brainbase: the five Vouch agents are managed agents there.
+  let run: Awaited<ReturnType<typeof startBrainbaseRun>>;
   try {
-    run = await startRun(c.env, c.executionCtx, {
+    run = await startBrainbaseRun(c.env, c.executionCtx, {
       name,
       city: body.city?.trim() || 'San Francisco',
     });

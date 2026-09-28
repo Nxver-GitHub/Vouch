@@ -50,7 +50,11 @@
     "LINEAR_STATE_AUDITED": "99c0a798-bc3f-4a3c-94c6-5199742276b1",
     "LINEAR_STATE_DEPLOYED": "f78f89ab-6d7c-453e-a090-93b6e4de487b",
     "LINEAR_STATE_OFFERED": "1314c235-755c-469a-a68a-844bb4384c7d",
-    "LINEAR_STATE_PAID": "66799f82-29d2-43a2-be9b-1dbc98954510"
+    "LINEAR_STATE_PAID": "66799f82-29d2-43a2-be9b-1dbc98954510",
+    // Every /api/run is handed to the Vouch Orchestrator in Brainbase
+    // (Surya's org, Vouch team). Runs are public, so this caps them site-wide.
+    "RUN_DAILY_LIMIT": "10",
+    "BRAINBASE_ORCHESTRATOR_ID": "9569c1ed-a310-48b8-80ad-8e85d00554bb"
   }
 
   // Secrets (NOT here — .dev.vars locally, `wrangler secret put` for prod):

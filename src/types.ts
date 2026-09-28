@@ -19,6 +19,10 @@ export type Env = {
   RESEND_FROM: string;
   /** The ONLY address outreach may send to. Empty means outreach refuses to draft. */
   DEMO_OWNER_EMAIL: string;
+  /** Site-wide cap on public runs per UTC day. */
+  RUN_DAILY_LIMIT: string;
+  /** Managed agent id of the Vouch Orchestrator in Brainbase. */
+  BRAINBASE_ORCHESTRATOR_ID: string;
   LINEAR_TEAM_ID: string;
   LINEAR_STATE_TODO: string;
   LINEAR_STATE_AUDITED: string;
