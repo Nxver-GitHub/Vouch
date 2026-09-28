@@ -140,11 +140,11 @@ app.get('/assets/:name', async (c) => {
  */
 app.post('/api/run', async (c) => {
   const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
-  const perVisitor = await throttle(c.env.DB, `run:${ip}`, 3, 3600); // 3 per hour
+  const perVisitor = await throttle(c.env.DB, `run:${ip}`, 6, 3600); // 6 per hour
   if (!perVisitor.allowed) {
     return c.json({ error: 'rate_limited', used: perVisitor.used, limit: perVisitor.limit }, 429);
   }
-  const dailyLimit = Number(c.env.RUN_DAILY_LIMIT) || 10;
+  const dailyLimit = Number(c.env.RUN_DAILY_LIMIT) || 30;
   const siteWide = await throttle(c.env.DB, 'run:all', dailyLimit, 86_400);
   if (!siteWide.allowed) {
     return c.json({ error: 'daily_limit_reached', used: siteWide.used, limit: siteWide.limit }, 429);
