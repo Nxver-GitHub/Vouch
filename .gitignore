@@ -1,0 +1,18 @@
+# secrets — never commit
+.dev.vars
+.dev.vars.*
+.env
+.env.local
+.env.*.local
+.env*.bak
+.env.local.*
+# ...but .env.example IS committed (it holds no values)
+
+# build / tooling
+node_modules/
+.wrangler/
+dist/
+.open-next/
+*.log
+.DS_Store
+.impeccable/

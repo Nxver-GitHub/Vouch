@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vouch — Instrument</title>
+<meta name="description" content="Operator console. Customers ask AI what's good nearby. We grade the answers.">
+<style>
+/* ============================================================
+   VOUCH — OPERATOR INSTRUMENT
+   Dark bench console. Projector-legible. No external assets.
+   Nothing below 16px. Mono-dominant, no decorative emoji.
+   ============================================================ */
+
+:root{
+  --bg:        #07090A;
+  --panel:     #0E1315;
+  --panel-2:   #121A1D;
+  --rule:      #1D272B;
+  --rule-hot:  #2A3A40;
+
+  --ink:       #E8F0F2;
+  --ink-2:     #9FB2B7;
+  --ink-3:     #63777C;
+
+  --signal:    #2DE0A5;   /* done / shared / good */
+  --amber:     #FFB020;   /* working / attention */
+  --alert:     #FF5C4D;   /* wrong fact / fail grade */
+  --cool:      #5BB9FF;   /* links / deployed */
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "DejaVu Sans Mono", Consolas, monospace;
+
+  --gutter: 28px;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html,body{ margin:0; padding:0; }
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--mono);
+  font-size:17px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 64px;
+}
+
+.wrap{ max-width:1520px; margin:0 auto; padding:0 var(--gutter); }
+
+/* ---------- micro label: tracked caps, never below 16px ---------- */
+.lbl{
+  font-size:16px;
+  letter-spacing:.20em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  font-weight:500;
+}
+
+/* ================= MASTHEAD ================= */
+header.mast{
+  border-bottom:1px solid var(--rule);
+  background:linear-gradient(180deg,#0A0E10,#07090A);
+  position:sticky; top:0; z-index:40;
+}
+.mast-in{
+  display:flex; align-items:center; gap:24px;
+  padding:18px var(--gutter);
+  max-width:1520px; margin:0 auto;
+}
+.mark{
+  display:flex; align-items:baseline; gap:12px;
+}
+.mark b{
+  font-size:26px; font-weight:700; letter-spacing:.34em;
+  color:var(--ink);
+}
+.mark span{
+  font-size:16px; color:var(--ink-3); letter-spacing:.06em;
+}
+.tag{
+  flex:1; min-width:0;
+  font-size:16px; color:var(--ink-2);
+  border-left:1px solid var(--rule); padding-left:24px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.runid{
+  display:flex; align-items:center; gap:12px;
+  font-size:16px; color:var(--ink-2);
+}
+.led{
+  width:11px; height:11px; border-radius:50%;
+  background:var(--ink-3); box-shadow:0 0 0 0 rgba(0,0,0,0);
+}
+.led.live{ background:var(--amber); animation:pulse 1.1s ease-in-out infinite; }
+.led.done{ background:var(--signal); }
+@keyframes pulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,176,32,.55); }
+  55%    { box-shadow:0 0 0 9px rgba(255,176,32,0); }
+}
+
+/* ================= CONTROL BAR ================= */
+.control{
+  display:flex; gap:14px; align-items:stretch; flex-wrap:wrap;
+  padding:22px 0 26px;
+  border-bottom:1px solid var(--rule);
+}
+.field{
+  position:relative; flex:1 1 300px; min-width:240px;
+  border:1px solid var(--rule); background:var(--panel);
+}
+.field:focus-within{ border-color:var(--rule-hot); background:var(--panel-2); }
+.field .lbl{
+  position:absolute; top:9px; left:16px; font-size:16px; letter-spacing:.20em;
+  pointer-events:none;
+}
+.field input{
+  width:100%; border:0; background:transparent; outline:0;
+  color:var(--ink); font-family:var(--mono); font-size:22px;
+  padding:34px 16px 14px;
+}
+.field input::placeholder{ color:#3E4E53; }
+
+button.run{
+  flex:0 0 auto;
+  border:1px solid var(--signal);
+  background:#0B1A16;
+  color:var(--signal);
+  font-family:var(--mono); font-size:22px; font-weight:700;
+  letter-spacing:.26em; text-transform:uppercase;
+  padding:0 46px; cursor:pointer;
+  transition:background .12s linear, color .12s linear;
+}
+button.run:hover{ background:var(--signal); color:#04120D; }
+button.run:active{ transform:translateY(1px); }
+button.run[disabled]{ opacity:.35; cursor:not-allowed; }
+button.ghost{
+  flex:0 0 auto; border:1px solid var(--rule); background:transparent;
+  color:var(--ink-2); font-family:var(--mono); font-size:17px;
+  letter-spacing:.14em; text-transform:uppercase; padding:0 22px; cursor:pointer;
+}
+button.ghost:hover{ border-color:var(--rule-hot); color:var(--ink); }
+
+/* ================= LAYOUT ================= */
+.grid{
+  display:grid;
+  grid-template-columns: 1fr 1.32fr;
+  gap:22px;
+  padding-top:22px;
+}
+@media (max-width:1180px){ .grid{ grid-template-columns:1fr; } }
+
+.panel{
+  border:1px solid var(--rule);
+  background:var(--panel);
+}
+.panel > .head{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--rule);
+  background:var(--panel-2);
+}
+.panel > .body{ padding:18px; }
+
+/* ================= AGENT TIMELINE ================= */
+.agents{ display:flex; flex-direction:column; }
+.agent{
+  display:grid;
+  grid-template-columns:44px 1fr auto;
+  gap:16px; align-items:start;
+  padding:16px 18px;
+  border-bottom:1px solid var(--rule);
+  opacity:.5;
+  transition:opacity .2s linear, background .2s linear;
+}
+.agent:last-child{ border-bottom:0; }
+.agent.active{ opacity:1; background:#101A1C; }
+.agent.finished{ opacity:1; }
+
+.glyph{
+  width:44px; height:44px; border:1px solid var(--rule);
+  display:grid; place-items:center; color:var(--ink-3);
+}
+.agent.active .glyph{ border-color:var(--amber); color:var(--amber); }
+.agent.finished .glyph{ border-color:var(--signal); color:var(--signal); }
+.glyph svg{ display:block; }
+
+.agent .name{ font-size:20px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+.agent .msg{
+  font-size:17px; color:var(--ink-2); margin-top:5px;
+  /* keep long agent chatter from reflowing the whole panel */
+  min-height:1.45em;
+}
+.agent.active .msg{ color:var(--ink); }
+
+.state{
+  font-size:16px; letter-spacing:.18em; text-transform:uppercase;
+  padding:5px 12px; border:1px solid var(--rule); color:var(--ink-3);
+  white-space:nowrap;
+}
+.state[data-s="working"]{ border-color:var(--amber); color:var(--amber); }
+.state[data-s="done"]{ border-color:var(--signal); color:var(--signal); }
+
+/* ================= GRADE ================= */
+.gradewrap{ display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
+.dial{
+  width:184px; height:184px; position:relative; flex:0 0 auto;
+}
+.dial svg{ display:block; transform:rotate(-90deg); }
+.dial .readout{
+  position:absolute; inset:0; display:grid; place-content:center; text-align:center;
+}
+.dial .num{
+  font-size:64px; font-weight:700; line-height:1; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;
+}
+.dial .of{ font-size:16px; color:var(--ink-3); letter-spacing:.2em; margin-top:8px; }
+
+.letter{
+  font-size:96px; font-weight:700; line-height:.9; letter-spacing:-.04em;
+}
+.gradenote{ font-size:17px; color:var(--ink-2); margin-top:12px; max-width:34ch; }
+.noise{ font-size:16px; color:var(--ink-3); margin-top:10px; }
+
+/* ================= FACT SHEET ================= */
+table.sheet{ width:100%; border-collapse:collapse; font-size:17px; }
+table.sheet th{
+  text-align:left; font-size:16px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:500; padding:0 12px 10px 0;
+  border-bottom:1px solid var(--rule);
+}
+table.sheet td{
+  padding:13px 12px 13px 0; border-bottom:1px solid var(--rule);
+  vertical-align:top;
+}
+table.sheet tr:last-child td{ border-bottom:0; }
+.verdict{
+  font-size:16px; letter-spacing:.14em; text-transform:uppercase;
+  padding:3px 9px; border:1px solid currentColor; white-space:nowrap;
+}
+.v-wrong{ color:var(--alert); }
+.v-missing{ color:var(--amber); }
+.stated{ color:var(--alert); }
+.expected{ color:var(--signal); }
+.engine{ color:var(--ink-2); white-space:nowrap; }
+.empty{ color:var(--ink-3); font-size:17px; padding:10px 0; }
+
+/* ================= STREET / RANK ================= */
+.rankline{
+  display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  font-size:22px; padding-bottom:16px;
+}
+.rankline b{ font-size:28px; font-weight:700; color:var(--amber); }
+.street{ display:flex; gap:10px; flex-wrap:wrap; }
+.shop{
+  font-size:16px; padding:7px 12px; border:1px solid var(--rule);
+  color:var(--ink-3); display:flex; align-items:center; gap:9px;
+}
+.shop .bulb{ width:9px; height:9px; border:1px solid var(--ink-3); border-radius:50%; }
+.shop.lit{ color:var(--ink); border-color:var(--rule-hot); }
+.shop.lit .bulb{ background:var(--amber); border-color:var(--amber); box-shadow:0 0 10px rgba(255,176,32,.7); }
+.shop.you{ border-color:var(--cool); color:var(--cool); }
+.shop.you .bulb{ border-color:var(--cool); }
+.shop.you.lit .bulb{ background:var(--cool); box-shadow:0 0 10px rgba(91,185,255,.7); }
+
+/* ================= DEPLOYED URL ================= */
+.deploy{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:16px 18px; border:1px solid var(--rule); background:var(--panel-2);
+}
+.deploy a{
+  font-size:26px; color:var(--cool); text-decoration:none;
+  border-bottom:1px solid rgba(91,185,255,.4); word-break:break-all;
+}
+.deploy a:hover{ border-bottom-color:var(--cool); }
+.deploy .pending{ font-size:20px; color:var(--ink-3); }
+
+/* ============================================================
+   NON-DETERMINISM PANEL — the money shot
+   ============================================================ */
+.nd{
+  margin-top:22px;
+  border:1px solid var(--rule-hot);
+  background:linear-gradient(180deg,#0F1618,#0A1011);
+}
+.nd > .head{
+  padding:16px 18px; border-bottom:1px solid var(--rule-hot);
+  display:flex; align-items:baseline; justify-content:space-between; gap:18px; flex-wrap:wrap;
+  background:#121B1E;
+}
+.nd .title{ font-size:22px; font-weight:700; letter-spacing:.20em; text-transform:uppercase; }
+.nd .query{ font-size:17px; color:var(--ink-2); }
+.nd .query em{ color:var(--ink); font-style:normal; }
+
+.nd-body{
+  display:grid;
+  grid-template-columns: 1fr 240px 1fr;
+  gap:0;
+}
+@media (max-width:980px){ .nd-body{ grid-template-columns:1fr; } }
+
+.side{ padding:20px; }
+.side.b{ border-left:1px solid var(--rule); }
+@media (max-width:980px){ .side.b{ border-left:0; border-top:1px solid var(--rule); } }
+.side h4{
+  margin:0 0 4px; font-size:18px; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase;
+}
+.side .stamp{ font-size:16px; color:var(--ink-3); margin-bottom:16px; }
+
+ul.cites{ list-style:none; margin:0; padding:0; }
+ul.cites li{
+  display:flex; align-items:center; gap:12px;
+  padding:9px 0; border-bottom:1px dashed var(--rule);
+  font-size:18px; color:var(--ink-3);
+}
+ul.cites li:last-child{ border-bottom:0; }
+ul.cites li .box{ width:12px; height:12px; border:1px solid var(--ink-3); flex:0 0 auto; }
+ul.cites li.shared{ color:var(--signal); }
+ul.cites li.shared .box{ background:var(--signal); border-color:var(--signal); }
+ul.cites li.only{ color:var(--ink-2); }
+
+.meter{
+  display:grid; place-content:center; text-align:center;
+  border-left:1px solid var(--rule); border-right:1px solid var(--rule);
+  padding:20px 14px; background:#0B1113;
+}
+@media (max-width:980px){ .meter{ border:0; border-top:1px solid var(--rule); } }
+.meter .big{
+  font-size:88px; font-weight:700; line-height:.9; letter-spacing:-.04em;
+  color:var(--alert); font-variant-numeric:tabular-nums;
+}
+.meter .cap{ font-size:16px; letter-spacing:.20em; text-transform:uppercase; color:var(--ink-3); margin-top:12px; }
+.meter .frac{ font-size:18px; color:var(--ink-2); margin-top:8px; }
+.meter hr{ border:0; border-top:1px solid var(--rule); margin:18px 0; }
+.meter .cmp{ font-size:16px; color:var(--ink-3); line-height:1.6; }
+.meter .cmp b{ color:var(--ink-2); }
+
+.nd-foot{
+  border-top:1px solid var(--rule); padding:14px 18px;
+  font-size:17px; color:var(--ink-2);
+}
+.nd-foot b{ color:var(--ink); }
+
+/* ================= BUDGET LEDGER ================= */
+.ledger{
+  margin-top:22px; border:1px solid var(--rule); background:var(--panel);
+  display:flex; align-items:stretch; flex-wrap:wrap;
+}
+.ledger .cell{
+  padding:16px 20px; border-right:1px solid var(--rule); flex:1 1 180px;
+}
+.ledger .cell:last-child{ border-right:0; }
+.ledger .cell .lbl{ display:block; margin-bottom:8px; }
+.ledger .cell .v{ font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
+.ledger .cell .who{ font-size:16px; color:var(--ink-3); margin-top:5px; }
+.ledger .cell.total{ background:var(--panel-2); }
+.ledger .cell.total .v{ color:var(--signal); }
+.ledger .cell.cap .v{ color:var(--ink-2); }
+
+/* ================= FOOT ================= */
+.foot{
+  margin-top:26px; padding-top:16px; border-top:1px solid var(--rule);
+  font-size:16px; color:var(--ink-3); display:flex; gap:24px; flex-wrap:wrap;
+}
+.foot b{ color:var(--ink-2); }
+
+.fade{ animation:fade .22s ease-out; }
+@keyframes fade{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+
+@media (prefers-reduced-motion:reduce){
+  *{ animation:none !important; transition:none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast-in">
+    <div class="mark"><b>VOUCH</b><span>instrument v0.1</span></div>
+    <div class="tag">Customers ask AI what&rsquo;s good nearby. We grade the answers.</div>
+    <div class="runid"><span class="led" id="led"></span><span id="runid">run — idle</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ CONTROL ============ -->
+  <section class="control">
+    <label class="field">
+      <span class="lbl">Business</span>
+      <input id="in-biz" value="Tartine Bakery" placeholder="Name of a local business" autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="lbl">City</span>
+      <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off">
+    </label>
+    <button class="run" id="btn-run">Run</button>
+    <button class="ghost" id="btn-reset">Reset</button>
+  </section>
+
+  <div class="grid">
+
+    <!-- ============ LEFT: AGENTS ============ -->
+    <section class="panel">
+      <div class="head">
+        <span class="lbl">Agent timeline</span>
+        <span class="lbl" id="clock">t+00.0s</span>
+      </div>
+      <div class="agents" id="agents"></div>
+    </section>
+
+    <!-- ============ RIGHT: AUDIT ============ -->
+    <div style="display:flex;flex-direction:column;gap:22px;">
+
+      <section class="panel">
+        <div class="head">
+          <span class="lbl">Audit grade</span>
+          <span class="lbl">code-computed, not LLM-graded</span>
+        </div>
+        <div class="body">
+          <div class="gradewrap">
+            <div class="dial">
+              <svg width="184" height="184" viewBox="0 0 184 184" aria-hidden="true">
+                <circle cx="92" cy="92" r="78" fill="none" stroke="#1D272B" stroke-width="14"/>
+                <circle id="arc" cx="92" cy="92" r="78" fill="none" stroke="#63777C" stroke-width="14"
+                        stroke-linecap="butt" stroke-dasharray="490" stroke-dashoffset="490"
+                        style="transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1), stroke .3s linear"/>
+              </svg>
+              <div class="readout">
+                <div class="num" id="score">—</div>
+                <div class="of">of 100</div>
+              </div>
+            </div>
+            <div>
+              <div class="letter" id="letter" style="color:var(--ink-3)">—</div>
+              <div class="gradenote" id="gradenote">Awaiting probe. Score is computed in code from ground-truth diffs, never graded by a model.</div>
+              <div class="noise">Noise floor: <b style="color:var(--ink-2)">SD 4.73 pts</b> audit-to-audit &middot; engine version pinned</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="head">
+          <span class="lbl">Wrong &amp; missing facts</span>
+          <span class="lbl" id="factcount">0 found</span>
+        </div>
+        <div class="body">
+          <table class="sheet">
+            <thead>
+              <tr><th style="width:20%">Fact</th><th style="width:28%">AI stated</th><th style="width:28%">Ground truth</th><th style="width:12%">Engine</th><th style="width:12%">Verdict</th></tr>
+            </thead>
+            <tbody id="facts">
+              <tr><td colspan="5" class="empty">No probes returned yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="head">
+          <span class="lbl">Shops down the street</span>
+          <span class="lbl">lit = cited by an engine</span>
+        </div>
+        <div class="body">
+          <div class="rankline" id="rankline"><span style="color:var(--ink-3);font-size:18px">Rank pending.</span></div>
+          <div class="street" id="street"></div>
+        </div>
+      </section>
+
+      <div class="deploy" id="deploy">
+        <span class="lbl">Deployed</span>
+        <span class="pending" id="urlslot">not yet built</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ NON-DETERMINISM — THE MONEY SHOT ============ -->
+  <section class="nd" id="nd">
+    <div class="head">
+      <span class="title">Non-determinism probe</span>
+      <span class="query">Same engine, same prompt, <em id="nd-gap">90 seconds apart</em> &middot; <em id="nd-engine">Gemini</em> &middot; <span id="nd-q">&ldquo;best bakery in the Mission, San Francisco&rdquo;</span></span>
+    </div>
+    <div class="nd-body">
+      <div class="side a">
+        <h4 style="color:var(--ink)">Run A</h4>
+        <div class="stamp" id="nd-a-stamp">—</div>
+        <ul class="cites" id="nd-a"><li class="only"><span class="box"></span>awaiting probe</li></ul>
+      </div>
+      <div class="meter">
+        <div class="big" id="nd-pct">—</div>
+        <div class="cap">source overlap</div>
+        <div class="frac" id="nd-frac">&nbsp;</div>
+        <hr>
+        <div class="cmp" id="nd-cmp">
+          Google local 3-pack, same query twice: <b>~90%</b>
+        </div>
+      </div>
+      <div class="side b">
+        <h4 style="color:var(--ink)">Run B</h4>
+        <div class="stamp" id="nd-b-stamp">—</div>
+        <ul class="cites" id="nd-b"><li class="only"><span class="box"></span>awaiting probe</li></ul>
+      </div>
+    </div>
+    <div class="nd-foot" id="nd-foot">
+      The answer surface is unstable. <b>That is why this is a subscription, not a project.</b>
+    </div>
+  </section>
+
+  <!-- ============ BUDGET LEDGER ============ -->
+  <section class="ledger">
+    <div class="cell"><span class="lbl">Engines</span><div class="v" id="c-engines">$0.00</div><div class="who">probes testify (fixed cost)</div></div>
+    <div class="cell"><span class="lbl">Decisions</span><div class="v" id="c-decisions">$0.00</div><div class="who">classification &amp; routing</div></div>
+    <div class="cell"><span class="lbl">Writing</span><div class="v" id="c-writing">$0.00</div><div class="who">page + outreach draft</div></div>
+    <div class="cell total"><span class="lbl">Cost of this run</span><div class="v" id="c-total">$0.00</div><div class="who">one acquired customer</div></div>
+    <div class="cell cap"><span class="lbl">Cap</span><div class="v" id="c-cap">$2.00</div><div class="who">breaker armed</div></div>
+  </section>
+
+  <div class="foot">
+    <span>Engines probed: <b>OpenAI &middot; Gemini &middot; Claude</b></span>
+    <span>Ground truth: <b>Google Places (New)</b></span>
+    <span>Score: <b>computed in code</b></span>
+    <span>Honestly labeled: <b>we measure answers, we do not claim to change them</b></span>
+  </div>
+
+</main>
+
+<script>
+/* ============================================================
+   EVENT FIXTURE
+   Contract (locked — backend swaps this array for a live feed):
+     { run_id, ts, agent, state,
+       business:{slug,name,lit},
+       competitors:[{name,lit}],
+       score, rank:[n,m], url, message }
+
+   Additive optional fields consumed by panels that the core
+   contract cannot express. All are OPTIONAL — a feed that omits
+   them renders a valid (emptier) dashboard:
+     facts:   [{key, stated, expected, engine, verdict}]
+     overlap: {engine, query, gap, a:{ts,sources[]}, b:{ts,sources[]},
+               top_business_same:bool}
+     cost:    {engines, decisions, writing, cap}
+   ============================================================ */
+
+const EVENTS = [
+  { run_id:"run_9f2a41", ts:1790000000, agent:"orchestrator", state:"working",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:null, rank:null, url:null,
+    message:"Run opened. Budget cap $2.00. Engine versions pinned; audits never compared across versions." },
+
+  { run_id:"run_9f2a41", ts:1790000003, agent:"auditor", state:"probing",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:null, rank:null, url:null,
+    message:"Ground truth pulled from Google Places (New). 12 fact probes armed across 3 engines." },
+
+  { run_id:"run_9f2a41", ts:1790000009, agent:"auditor", state:"probing",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:null, rank:null, url:null,
+    message:"Claude says closed Mondays. It is open 08:00–17:00.",
+    facts:[{key:"Hours (Mon)", stated:"Closed Mondays", expected:"Open 08:00–17:00", engine:"Claude", verdict:"wrong"}] },
+
+  { run_id:"run_9f2a41", ts:1790000014, agent:"auditor", state:"probing",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:null, rank:null, url:null,
+    message:"Phone number returned by OpenAI does not match the listing of record.",
+    facts:[
+      {key:"Phone", stated:"(415) 487-2600", expected:"(415) 487-2600 ext. closed line", engine:"OpenAI", verdict:"wrong"},
+      {key:"Address", stated:"600 Guerrero St", expected:"600 Guerrero St", engine:"OpenAI", verdict:"correct"}
+    ] },
+
+  { run_id:"run_9f2a41", ts:1790000019, agent:"auditor", state:"probing",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:null, rank:null, url:null,
+    message:"Gemini could not answer catering or wholesale. Two probes returned nothing.",
+    facts:[
+      {key:"Catering", stated:"—", expected:"Wholesale + event catering", engine:"Gemini", verdict:"missing"},
+      {key:"Gluten-free", stated:"—", expected:"No dedicated GF line", engine:"Gemini", verdict:"missing"}
+    ] },
+
+  { run_id:"run_9f2a41", ts:1790000026, agent:"auditor", state:"done",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[
+      {name:"Arsicault Bakery", lit:true},
+      {name:"b. Patisserie", lit:true},
+      {name:"Jane the Bakery", lit:true},
+      {name:"Neighbor Bakehouse", lit:false},
+      {name:"Marla Bakery", lit:false}
+    ],
+    score:34, rank:[4,6], url:null,
+    message:"Sheet closed. 34/100. 4 wrong, 2 missing across 12 probes. Grade F." },
+
+  { run_id:"run_9f2a41", ts:1790000032, agent:"orchestrator", state:"working",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:34, rank:[4,6], url:null,
+    message:"Re-running one probe verbatim to measure the noise floor, live.",
+    overlap:{
+      engine:"Gemini",
+      query:"best bakery in the Mission, San Francisco",
+      gap:"90 seconds apart",
+      top_business_same:false,
+      a:{ ts:"14:02:11 PDT", sources:["tartinebakery.com","yelp.com","eater.com","sfgate.com","reddit.com","tripadvisor.com","thrillist.com"] },
+      b:{ ts:"14:03:41 PDT", sources:["tartinebakery.com","yelp.com","eater.com","timeout.com","theinfatuation.com","sfstandard.com","opentable.com"] }
+    } },
+
+  { run_id:"run_9f2a41", ts:1790000040, agent:"builder", state:"working",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
+    competitors:[], score:34, rank:[4,6], url:null,
+    message:"Writing the highest-intent question it is losing, not a profile page. Facts go in visible HTML." },
+
+  { run_id:"run_9f2a41", ts:1790000048, agent:"builder", state:"done",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[], score:34, rank:[4,6],
+    url:"https://tartine-bakery.usevouch.dev",
+    message:"Deployed to the wildcard Worker. Extractability check passed: 9 of 9 facts present as visible text." },
+
+  { run_id:"run_9f2a41", ts:1790000054, agent:"revenue", state:"working",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Pricing monthly monitoring at $39. Link carries business_id, run_id, slug." },
+
+  { run_id:"run_9f2a41", ts:1790000059, agent:"revenue", state:"done",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Payment link live. Poll armed at 2s; webhook is the backup, not the primary." },
+
+  { run_id:"run_9f2a41", ts:1790000064, agent:"outreach", state:"working",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Draft written. Leads with the wrong Monday hours. Waiting on a human to approve." },
+
+  { run_id:"run_9f2a41", ts:1790000071, agent:"outreach", state:"done",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Approved by a human. Email sent from hello@usevouch.dev." },
+
+  { run_id:"run_9f2a41", ts:1790000078, agent:"orchestrator", state:"done",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[
+      {name:"Arsicault Bakery", lit:true},
+      {name:"b. Patisserie", lit:true},
+      {name:"Jane the Bakery", lit:true},
+      {name:"Neighbor Bakehouse", lit:false},
+      {name:"Marla Bakery", lit:false}
+    ],
+    score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Paid. Monitoring on. One customer found, fixed and closed without a human in the loop until approval.",
+    cost:{ engines:0.41, decisions:0.02, writing:0.18, cap:2.00 } }
+];
+
+/* ---------- playback pacing ---------- */
+const SPEED = 2.6;          // compress fixture seconds for a 3-minute demo
+const MIN_MS = 340, MAX_MS = 1500;
+
+/* ---------- agent roster + glyphs (geometric, not emoji) ---------- */
+const AGENTS = [
+  { id:"orchestrator", name:"Orchestrator", glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="3"/><circle cx="11" cy="3" r="1.8"/><circle cx="18" cy="15" r="1.8"/><circle cx="4" cy="15" r="1.8"/><path d="M11 6v2M13.4 12.6l3 1.8M8.6 12.6l-3 1.8"/></svg>' },
+  { id:"auditor",      name:"Auditor",      glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18V8M8 18V4M13 18v-7M18 18v-3"/><path d="M2 20h18"/></svg>' },
+  { id:"builder",      name:"Builder",      glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 19V9l8-6 8 6v10"/><path d="M8 19v-6h6v6"/></svg>' },
+  { id:"revenue",      name:"Revenue",      glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="5.5" width="17" height="11"/><path d="M2.5 9.5h17M6 13.5h3"/></svg>' },
+  { id:"outreach",     name:"Outreach",     glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4.5" width="17" height="13"/><path d="M2.5 6l8.5 6 8.5-6"/></svg>' }
+];
+
+const $ = id => document.getElementById(id);
+
+/* ---------- build agent rows once ---------- */
+const agentEls = {};
+(function mountAgents(){
+  const host = $("agents");
+  host.innerHTML = "";
+  AGENTS.forEach(a => {
+    const row = document.createElement("div");
+    row.className = "agent";
+    row.innerHTML =
+      '<div class="glyph">' + a.glyph + '</div>' +
+      '<div><div class="name">' + a.name + '</div><div class="msg">idle</div></div>' +
+      '<div class="state" data-s="idle">idle</div>';
+    host.appendChild(row);
+    agentEls[a.id] = { row, msg:row.querySelector(".msg"), state:row.querySelector(".state") };
+  });
+})();
+
+/* ---------- state ---------- */
+let timers = [], facts = [], t0 = 0, clockTimer = null;
+
+function gradeFor(s){
+  if (s === null || s === undefined) return "—";
+  if (s >= 90) return "A"; if (s >= 80) return "B";
+  if (s >= 70) return "C"; if (s >= 60) return "D";
+  return "F";
+}
+function gradeColor(s){
+  if (s === null || s === undefined) return "var(--ink-3)";
+  if (s >= 80) return "var(--signal)";
+  if (s >= 60) return "var(--amber)";
+  return "var(--alert)";
+}
+const money = n => "$" + Number(n).toFixed(2);
+
+/* ---------- renderers ---------- */
+function renderAgent(ev){
+  // any state that is not idle/done is treated as working; raw state is shown verbatim
+  const bucket = ev.state === "done" ? "done" : (ev.state === "idle" ? "idle" : "working");
+  const el = agentEls[ev.agent];
+  if (!el) return;
+  AGENTS.forEach(a => agentEls[a.id].row.classList.remove("active"));
+  el.row.classList.toggle("finished", bucket !== "idle");
+  if (bucket === "working") el.row.classList.add("active");
+  el.msg.textContent = ev.message || "";
+  el.msg.classList.remove("fade"); void el.msg.offsetWidth; el.msg.classList.add("fade");
+  el.state.dataset.s = bucket;
+  el.state.textContent = ev.state;
+}
+
+function renderScore(score){
+  if (score === null || score === undefined) return;
+  $("score").textContent = score;
+  const letter = $("letter");
+  letter.textContent = gradeFor(score);
+  letter.style.color = gradeColor(score);
+  const arc = $("arc");
+  const C = 490;
+  arc.style.stroke = gradeColor(score);
+  arc.style.strokeDashoffset = String(C - (C * (score / 100)));
+  $("gradenote").textContent =
+    "Grade " + gradeFor(score) + ". Computed in code from ground-truth diffs across 12 fact probes — no model graded this number.";
+}
+
+function renderFacts(newFacts){
+  newFacts.forEach(f => { if (f.verdict !== "correct") facts.push(f); });
+  const body = $("facts");
+  if (!facts.length){ body.innerHTML = '<tr><td colspan="5" class="empty">No probes returned yet.</td></tr>'; return; }
+  body.innerHTML = facts.map(f =>
+    '<tr class="fade">' +
+      '<td>' + f.key + '</td>' +
+      '<td class="stated">' + f.stated + '</td>' +
+      '<td class="expected">' + f.expected + '</td>' +
+      '<td class="engine">' + f.engine + '</td>' +
+      '<td><span class="verdict v-' + f.verdict + '">' + f.verdict + '</span></td>' +
+    '</tr>').join("");
+  const w = facts.filter(f => f.verdict === "wrong").length;
+  const m = facts.filter(f => f.verdict === "missing").length;
+  $("factcount").textContent = w + " wrong / " + m + " missing";
+}
+
+function renderRank(ev){
+  if (!ev.rank) return;
+  const [n, m] = ev.rank;
+  $("rankline").innerHTML =
+    '<span style="color:var(--ink-2)">Ranked</span> <b>' + n + 'th of ' + m + '</b> ' +
+    '<span style="color:var(--ink-2)">nearby bakeries when an engine is asked to recommend one.</span>';
+}
+
+function renderStreet(ev){
+  if (!ev.competitors || !ev.competitors.length) return;
+  const you = ev.business;
+  const shops = [{ name:you.name + "  (you)", lit:you.lit, you:true }]
+    .concat(ev.competitors.map(c => ({ name:c.name, lit:c.lit, you:false })));
+  $("street").innerHTML = shops.map(s =>
+    '<span class="shop' + (s.lit ? ' lit' : '') + (s.you ? ' you' : '') + '">' +
+    '<span class="bulb"></span>' + s.name + '</span>').join("");
+}
+
+function renderUrl(url){
+  if (!url) return;
+  $("urlslot").outerHTML = '<a id="urlslot" class="fade" href="' + url + '" target="_blank" rel="noopener">' + url + '</a>';
+  $("deploy").style.borderColor = "var(--rule-hot)";
+}
+
+function renderOverlap(o){
+  const A = o.a.sources, B = o.b.sources;
+  const setB = new Set(B), setA = new Set(A);
+  const shared = A.filter(s => setB.has(s));
+  const denom = Math.max(A.length, B.length);
+  const pct = denom ? (shared.length / denom) * 100 : 0;
+
+  $("nd-engine").textContent = o.engine;
+  $("nd-gap").textContent = o.gap;
+  $("nd-q").innerHTML = "&ldquo;" + o.query + "&rdquo;";
+  $("nd-a-stamp").textContent = o.a.ts;
+  $("nd-b-stamp").textContent = o.b.ts;
+
+  const li = (s, isShared) =>
+    '<li class="' + (isShared ? "shared" : "only") + '"><span class="box"></span>' + s + '</li>';
+  $("nd-a").innerHTML = A.map(s => li(s, setB.has(s))).join("");
+  $("nd-b").innerHTML = B.map(s => li(s, setA.has(s))).join("");
+
+  $("nd-pct").textContent = pct.toFixed(1) + "%";
+  $("nd-frac").textContent = shared.length + " of " + denom + " cited sources shared";
+  $("nd-cmp").innerHTML =
+    'Same top business both runs: <b style="color:var(--alert)">' + (o.top_business_same ? "yes" : "no") + '</b><br>' +
+    'Google local 3-pack, same query twice: <b>~90%</b>';
+  $("nd").style.borderColor = "var(--alert)";
+}
+
+function renderCost(c){
+  $("c-engines").textContent   = money(c.engines);
+  $("c-decisions").textContent = money(c.decisions);
+  $("c-writing").textContent   = money(c.writing);
+  $("c-total").textContent     = money(c.engines + c.decisions + c.writing);
+  $("c-cap").textContent       = money(c.cap);
+}
+
+/* ---------- the single entry point the backend will call ---------- */
+function applyEvent(ev){
+  $("runid").textContent = ev.run_id;
+  renderAgent(ev);
+  if (ev.score !== null && ev.score !== undefined) renderScore(ev.score);
+  if (ev.facts) renderFacts(ev.facts);
+  if (ev.rank) renderRank(ev);
+  if (ev.competitors && ev.competitors.length) renderStreet(ev);
+  if (ev.url) renderUrl(ev.url);
+  if (ev.overlap) renderOverlap(ev.overlap);
+  if (ev.cost) renderCost(ev.cost);
+}
+window.applyEvent = applyEvent;   // live feed swaps EVENTS playback for calls to this
+
+/* ---------- playback ---------- */
+function stop(){ timers.forEach(clearTimeout); timers = []; if (clockTimer) clearInterval(clockTimer); }
+
+function reset(){
+  stop();
+  facts = [];
+  $("led").className = "led";
+  $("runid").textContent = "run — idle";
+  $("clock").textContent = "t+00.0s";
+  $("score").textContent = "—";
+  $("letter").textContent = "—"; $("letter").style.color = "var(--ink-3)";
+  $("arc").style.strokeDashoffset = "490"; $("arc").style.stroke = "#63777C";
+  $("gradenote").textContent = "Awaiting probe. Score is computed in code from ground-truth diffs, never graded by a model.";
+  $("facts").innerHTML = '<tr><td colspan="5" class="empty">No probes returned yet.</td></tr>';
+  $("factcount").textContent = "0 found";
+  $("rankline").innerHTML = '<span style="color:var(--ink-3);font-size:18px">Rank pending.</span>';
+  $("street").innerHTML = "";
+  const slot = $("urlslot");
+  if (slot) slot.outerHTML = '<span class="pending" id="urlslot">not yet built</span>';
+  $("deploy").style.borderColor = "var(--rule)";
+  $("nd").style.borderColor = "var(--rule-hot)";
+  $("nd-pct").textContent = "—"; $("nd-frac").innerHTML = "&nbsp;";
+  $("nd-a").innerHTML = '<li class="only"><span class="box"></span>awaiting probe</li>';
+  $("nd-b").innerHTML = '<li class="only"><span class="box"></span>awaiting probe</li>';
+  ["c-engines","c-decisions","c-writing","c-total"].forEach(i => $(i).textContent = "$0.00");
+  AGENTS.forEach(a => {
+    const el = agentEls[a.id];
+    el.row.className = "agent";
+    el.msg.textContent = "idle";
+    el.state.dataset.s = "idle"; el.state.textContent = "idle";
+  });
+  $("btn-run").disabled = false;
+}
+
+function play(){
+  reset();
+  $("btn-run").disabled = true;
+  $("led").className = "led live";
+  t0 = performance.now();
+  clockTimer = setInterval(() => {
+    $("clock").textContent = "t+" + ((performance.now() - t0) / 1000).toFixed(1).padStart(4, "0") + "s";
+  }, 100);
+
+  let acc = 180;
+  EVENTS.forEach((ev, i) => {
+    if (i > 0){
+      const gap = (EVENTS[i].ts - EVENTS[i - 1].ts) * 1000 / SPEED;
+      acc += Math.min(MAX_MS, Math.max(MIN_MS, gap));
+    }
+    timers.push(setTimeout(() => {
+      applyEvent(ev);
+      if (i === EVENTS.length - 1){
+        $("led").className = "led done";
+        $("btn-run").disabled = false;
+        clearInterval(clockTimer);
+      }
+    }, acc));
+  });
+}
+
+$("btn-run").addEventListener("click", play);
+$("btn-reset").addEventListener("click", reset);
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city")) play();
+});
+
+/* ?demo=replay — autoplay for the wifi-off backup path */
+if (new URLSearchParams(location.search).get("demo") === "replay"){
+  setTimeout(play, 400);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vouch",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-28",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Apex serves the dashboard; the wildcard serves per-business profile pages.
+  // The wildcard DNS record (AAAA * -> 100::, proxied) and the Universal SSL
+  // cert covering *.usevouch.dev are already live and verified.
+  // NOTE: Universal SSL covers ONE label only — never go two levels deep.
+  "routes": [
+    { "pattern": "usevouch.dev/*", "zone_name": "usevouch.dev" },
+    { "pattern": "*.usevouch.dev/*", "zone_name": "usevouch.dev" }
+  ],
+
+  // Keep workers.dev enabled as the zero-DNS fallback if the zone misbehaves
+  // on venue wifi: vouch.citationai.workers.dev
+  "workers_dev": true,
+
+  "observability": { "enabled": true },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vouch",
+      "database_id": "4bee70ae-ac83-4915-acf7-1d6feb570cd0"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "PROFILES",
+      "bucket_name": "vouch-profiles"
+    }
+  ],
+
+  // Workers AI — used for the cheap classification layer (typesafe/jev).
+  // Falls back to Claude if the binding misbehaves; jev shipped 2026-09-15.
+  "ai": { "binding": "AI" },
+
+  "vars": {
+    "PUBLIC_BASE_DOMAIN": "usevouch.dev",
+    "RUN_BUDGET_USD": "2.00",
+    "AGENT_STEP_LIMIT": "10",
+    "SLACK_OPS_CHANNEL": "#ops",
+    "RESEND_FROM": "vouch@usevouch.dev",
+    "LINEAR_TEAM_ID": "a1ec0397-3b49-4835-adcd-18416b39d2d5",
+    "LINEAR_STATE_TODO": "b875c0bb-1035-4db2-bf5c-68863a12bcfc",
+    "LINEAR_STATE_AUDITED": "99c0a798-bc3f-4a3c-94c6-5199742276b1",
+    "LINEAR_STATE_DEPLOYED": "f78f89ab-6d7c-453e-a090-93b6e4de487b",
+    "LINEAR_STATE_OFFERED": "1314c235-755c-469a-a68a-844bb4384c7d",
+    "LINEAR_STATE_PAID": "66799f82-29d2-43a2-be9b-1dbc98954510"
+  }
+
+  // Secrets (NOT here — .dev.vars locally, `wrangler secret put` for prod):
+  //   ANTHROPIC_API_KEY  GOOGLE_PLACES_API_KEY
+  //   STRIPE_SECRET_KEY  STRIPE_WEBHOOK_SECRET
+  //   SLACK_BOT_TOKEN    SLACK_SIGNING_SECRET
+  //   LINEAR_API_KEY     RESEND_API_KEY      BRAINBASE_API_KEY
+}
