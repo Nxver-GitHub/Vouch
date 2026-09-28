@@ -97,6 +97,9 @@ a:hover{text-decoration-color:var(--strong);}
 .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; padding-top:26px;}
 .f{flex:1 1 210px; min-width:0; display:flex; flex-direction:column; gap:6px;}
 .f > span{font-size:13px; color:var(--ink-2);}
+/* backend toggle: the Worker pipeline is the default; Brainbase is opt-in. */
+.bb{display:flex; align-items:center; gap:7px; font:400 13px/1 var(--sans); color:var(--ink-2); padding:0 4px 13px; white-space:nowrap; cursor:pointer;}
+.bb input{accent-color:var(--ink); width:14px; height:14px; margin:0;}
 .f input{
   width:100%; font:400 15px/1 var(--sans); color:var(--ink);
   background:var(--surface); border:1px solid var(--strong); border-radius:0;
@@ -372,6 +375,7 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
       <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off"></label>
     <label class="f"><span>Access token <em class="opt">optional &middot; shows saved runs</em></span>
       <input id="in-token" type="password" placeholder="Leave empty to just run" autocomplete="off"></label>
+    <label class="bb"><input type="checkbox" id="in-brainbase"> Run on Brainbase</label>
     <button class="btn" id="btn-run">Run</button>
     <button class="btn sub" id="btn-reset">Reset</button>
   </section>
@@ -1089,7 +1093,7 @@ async function runLive(){
     res = await fetch("/api/run", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: name, city: city })
+      body: JSON.stringify({ name: name, city: city, backend: ($("in-brainbase") && $("in-brainbase").checked) ? "brainbase" : "worker" })
     });
   }catch(e){
     console.error("Vouch dashboard: /api/run request failed:", e);
