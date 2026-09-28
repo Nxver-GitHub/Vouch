@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vouch Survey Office</title>
 <meta name="description" content="Operator console. Customers ask AI what's good nearby. We grade the answers.">
+<link rel="icon" type="image/png" href="/assets/plate-64.png">
+<link rel="apple-touch-icon" href="/assets/plate-128.png">
+<meta property="og:title" content="Vouch">
+<meta property="og:description" content="Customers ask AI what's good nearby. We grade the answers.">
+<meta property="og:image" content="https://usevouch.dev/assets/og-card.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;600&family=Instrument+Serif&display=swap">
@@ -84,6 +90,12 @@ h1.claim{
 .dot[data-s="failed"]{background:var(--verdict); border-color:var(--verdict);}
 .dot[data-s="awaiting"]{background:var(--surface); border-color:var(--ink);}
 
+/* ================================= HERO ================================= */
+/* The block stands on the paper ground: no border, no shadow, no card. It is
+   present in every state and it never animates — a run does not move it. */
+.hero{display:block; margin:26px 0 0;}
+.hero img{display:block; width:100%; height:auto; border:0;}
+
 /* =============================== CONTROLS =============================== */
 .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; padding-top:26px;}
 .f{flex:1 1 210px; min-width:0; display:flex; flex-direction:column; gap:6px;}
@@ -119,17 +131,23 @@ h1.claim{
   padding:0 22px 20px; width:max-content; min-width:100%;
 }
 /* the pavement sits under the shopfronts, at the sprite baseline, not as a
-   bar across the foot of the panel. Sprites are 180px tall here. */
+   bar across the foot of the panel. Sprites are 180px tall here; the stone
+   edge in street-day.png falls at 25% of the tile, so at top:146px it meets
+   the sprite foundations, which end at 156px. */
 .row.paved::before{
   content:""; position:absolute; left:0; right:0; top:146px; height:50px; z-index:0;
-  background:url("assets/street.png") repeat-x left bottom / 200px 50px;
+  background-image:url("/assets/street-day.png");
+  background-image:image-set(url("/assets/street-day.png") 1x, url("/assets/street-day@2x.png") 2x);
+  background-repeat:repeat-x; background-position:left bottom; background-size:200px 50px;
 }
 .row .none{font-size:15px; color:var(--ink-2); padding:34px 0 46px;}
 .lot{width:120px; flex:0 0 auto; position:relative; z-index:1;}
 .shopfront{position:relative; height:180px;}
 .shopfront img.sprite{display:block; width:120px; height:180px;}
 .shopfront .sign{position:absolute; left:-30px; bottom:2px; width:38px; height:48px;}
-.shopfront .plaque{position:absolute; left:34px; top:64px; width:30px; height:30px; color:var(--brass);}
+/* the benchmark plate, mounted on the facade beside the door. It carries its
+   own rendered shadow, so it takes no CSS shadow and no border. */
+.shopfront .plate3d{position:absolute; left:50px; top:100px; width:56px; height:35px;}
 .nameplate{
   margin-top:10px; padding-top:9px; border-top:1px solid var(--strong);
   font-size:13px; color:var(--ink-2); overflow-wrap:anywhere;
@@ -147,8 +165,17 @@ h1.claim{
 .reading > *{min-width:0;}
 .blank{
   grid-column:1/-1; font:400 18px/1.45 var(--sans); color:var(--ink-2);
-  padding:22px 0 12px; max-width:62ch;
+  padding:22px 0 12px; max-width:640px;
 }
+/* The desk is an opaque warm-paper illustration whose paper is close to, but
+   not exactly, --ground. A 2px paper mat inside a hairline makes that seam
+   read as a mount rather than as a mismatch. */
+.desk{margin:0;}
+.desk img{
+  display:block; width:100%; height:auto;
+  background:var(--ground); border:1px solid var(--hair); padding:2px;
+}
+.desk figcaption{margin-top:16px;}
 .figure{display:flex; align-items:baseline; gap:16px;}
 .score{font:400 96px/.8 var(--serif); letter-spacing:-.02em;}
 .gradestamp{
@@ -274,6 +301,14 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
   table.sheet th:nth-child(4),table.sheet td.eng{display:none;}
   .score{font-size:72px;}
 }
+
+/* Mobile hero: the full composition is unreadable at 390, so the source is
+   centre-cropped to 390x260 — the central unlit shop with lit storefronts at
+   its sides. Full-bleed to the viewport edges; the page keeps its gutter. */
+@media (max-width:480px){
+  .hero{margin-left:calc(-1 * var(--gut)); margin-right:calc(-1 * var(--gut));}
+  .hero img{height:260px; object-fit:cover; object-position:center;}
+}
 </style>
 </head>
 <body>
@@ -286,8 +321,8 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
         <circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v18.8M2.6 12h18.8"/>
       </g>
     </symbol>
-    <!-- the benchmark plate: engraved frame + datum. the masthead mark, and the
-         plaque that appears on the hero shopfront when monitoring is paid for. -->
+    <!-- the benchmark plate: engraved frame + datum. the masthead mark. The
+         shopfront plate is the rendered brass one, /assets/plate-3d.png. -->
     <symbol id="g-plate" viewBox="0 0 222 47">
       <g fill="none" stroke="currentColor" stroke-width="1.3">
         <rect x=".65" y=".65" width="220.7" height="45.7"/>
@@ -295,13 +330,6 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
         <path d="M45 10.5v26" opacity=".5"/>
       </g>
       <use href="#g-datum" x="14" y="13" width="21" height="21"/>
-    </symbol>
-    <symbol id="g-plaque" viewBox="0 0 30 30">
-      <g fill="none" stroke="currentColor" stroke-width="1.3">
-        <rect x=".65" y=".65" width="28.7" height="28.7"/>
-        <rect x="3.65" y="3.65" width="22.7" height="22.7" opacity=".5"/>
-      </g>
-      <use href="#g-datum" x="7" y="7" width="16" height="16"/>
     </symbol>
   </defs>
 </svg>
@@ -328,6 +356,13 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
 
 <main class="wrap">
 
+  <figure class="hero">
+    <img src="/assets/hero-street.png"
+         srcset="/assets/hero-street.png 1x, /assets/hero-street@2x.png 2x"
+         width="2400" height="600"
+         alt="A block of storefronts drawn in ink on paper; three shop windows lit">
+  </figure>
+
   <section class="controls">
     <label class="f"><span>Business</span>
       <input id="in-biz" value="Golden Boy Pizza" placeholder="Name of a local business" autocomplete="off"></label>
@@ -349,7 +384,15 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
   <section class="sec">
     <h2>The reading<span class="aside">score computed in code from ground-truth diffs, never graded by a model</span></h2>
     <div class="reading" id="reading">
-      <p class="blank" id="blank">No probe has returned yet. A score and a grade appear once the first fact has been measured against Google Places.</p>
+      <div class="blank" id="blank">
+        <figure class="desk">
+          <img src="/assets/empty-desk.png"
+               srcset="/assets/empty-desk.png 1x, /assets/empty-desk@2x.png 2x"
+               width="1200" height="800"
+               alt="A surveyor's desk seen from above: a street map, a benchmark plate, a dial gauge, calipers, a pencil and a blank notebook">
+          <figcaption>No audit yet. Run one to see what AI says about a business.</figcaption>
+        </figure>
+      </div>
       <div id="figure" hidden>
         <div class="figure">
           <span class="score" id="score"></span>
@@ -419,8 +462,11 @@ function safeHref(u){try{return new URL(String(u)).protocol==='https:'?String(u)
 /* ===========================================================================
    EVENT FIXTURE
    Contract (locked; the backend swaps this array for a live feed):
-     { run_id, ts, agent, state, business:{slug,name,lit},
+     { run_id, ts, agent, state, business:{slug,name,lit,category?},
        competitors:[{name,lit}], score, grade, rank:[n,m], url, message }
+   business.category is Places' primaryTypeDisplayName when we have it. It
+   chooses a drawing for the hero shopfront and nothing else; competitors carry
+   no category, so they keep the generic shop.
    Optional panels. Omitting one renders an emptier dashboard, not a broken one:
      facts:   [{key, stated, expected, engine, verdict}]
               verdict = correct | wrong | missing | disputed
@@ -432,7 +478,7 @@ function safeHref(u){try{return new URL(String(u)).protocol==='https:'?String(u)
    fixture. The hero is never lit by deploying or by paying. Lighting is audit
    data only; asserting otherwise is the causal claim BRIEF.md §11 forbids.
    =========================================================================== */
-var HERO = {slug:"tartine-bakery", name:"Tartine Bakery", lit:false};
+var HERO = {slug:"tartine-bakery", name:"Tartine Bakery", lit:false, category:"Bakery"};
 var STREET = [
   {name:"Arsicault Bakery", lit:true}, {name:"b. Patisserie", lit:true},
   {name:"Jane the Bakery", lit:true}, {name:"Neighbor Bakehouse", lit:false},
@@ -685,29 +731,47 @@ function renderRank(ev){
 }
 
 /* Pre-rendered isometric sprites, see design/BLENDER-HANDOFF.md. `kind` is
-   always the literal 'hero' or 'shop' and `lit` a boolean, so these paths are
+   always one of a fixed set of literals and `lit` a boolean, so these paths are
    never built from untrusted event text. */
 var SPRITE_H = 180, SPRITE_W = 120;    // 512x768 native, 2:3
 function spriteSrcset(kind, lit){
-  var b = "assets/" + kind + "-" + (lit ? "lit" : "dark");
+  var b = "/assets/" + kind + "-" + (lit ? "lit" : "dark");
   return b + ".png 1x, " + b + "@2x.png 2x";
+}
+/* Places (New) returns primaryTypeDisplayName as free text — "Pizza
+   Restaurant", "Bakery", "Coffee Shop". It picks a drawing and nothing else:
+   the match returns a literal sprite name or null, and the category string
+   itself never reaches a path or the DOM. Lit/dark stays driven only by `lit`;
+   a category never lights a shop. */
+function spriteKindFor(category){
+  var c = String(category == null ? "" : category).toLowerCase();
+  if (c.indexOf("bakery") >= 0 || c.indexOf("bake") >= 0) return "shop-bakery";
+  if (c.indexOf("pizza") >= 0) return "shop-pizza";
+  if (c.indexOf("cafe") >= 0 || c.indexOf("café") >= 0 || c.indexOf("coffee") >= 0) return "shop-cafe";
+  return null;
 }
 function renderStreet(){
   var host = $("row");
   if (!host || !stageBusiness) return;
-  var shops = [{name:stageBusiness.name, lit:!!stageBusiness.lit, you:true}]
-    .concat((stageCompetitors || []).map(function(c){ return {name:c.name, lit:!!c.lit, you:false}; }));
+  // The hero takes a category sprite when one matches, else the generic
+  // daylight hero, which carries its own contact shadow for the paper ground.
+  // Competitors carry no category in the contract, so they take generic shops.
+  var shops = [{name:stageBusiness.name, lit:!!stageBusiness.lit, you:true,
+                kind:spriteKindFor(stageBusiness.category) || "hero-day"}]
+    .concat((stageCompetitors || []).map(function(c){
+      return {name:c.name, lit:!!c.lit, you:false, kind:"shop"};
+    }));
   host.classList.add("paved");
   host.innerHTML = shops.map(function(s){
-    var kind = s.you ? "hero" : "shop";
     var inner = '<img class="sprite" width="' + SPRITE_W + '" height="' + SPRITE_H + '" alt="" ' +
-      'src="assets/' + kind + '-' + (s.lit ? "lit" : "dark") + '.png" srcset="' + spriteSrcset(kind, s.lit) + '">';
+      'src="/assets/' + s.kind + '-' + (s.lit ? "lit" : "dark") + '.png" srcset="' + spriteSrcset(s.kind, s.lit) + '">';
     // Sign = the Builder's page is live. Plate = monitoring is paid for.
     // Neither is a lighting channel, and lighting is never either of them.
     if (s.you && stageSignVisible)
-      inner += '<img class="sign" src="assets/sign.png" srcset="assets/sign.png 1x, assets/sign@2x.png 2x" alt="">';
+      inner += '<img class="sign" src="/assets/sign.png" srcset="/assets/sign.png 1x, /assets/sign@2x.png 2x" alt="">';
     if (s.you && stagePaid)
-      inner += '<svg class="plaque" viewBox="0 0 30 30" role="img" aria-label="Vouch monitoring active"><use href="#g-plaque"/></svg>';
+      inner += '<img class="plate3d" width="56" height="35" src="/assets/plate-3d.png" ' +
+        'srcset="/assets/plate-3d.png 1x, /assets/plate-3d@2x.png 2x" alt="Vouch monitoring active">';
     return '<div class="lot' + (s.lit ? " lit" : "") + '" data-n="' + esc(s.name) + '">' +
       '<div class="shopfront">' + inner + '</div>' +
       '<div class="nameplate"><span class="n"><span class="lamp"></span>' + esc(s.name) + '</span>' +
