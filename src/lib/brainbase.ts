@@ -70,6 +70,23 @@ export async function getThread(env: Env, threadId: string): Promise<BrainbaseRe
   return call(env, 'GET', `/v2/threads/${encodeURIComponent(threadId)}`);
 }
 
+export type BrainbaseTask = {
+  id: string;
+  agent_id: string;
+  parent_task_id: string | null;
+  title: string;
+  status: string;
+  created_at: string;
+};
+
+/**
+ * Tasks started by `parentTaskId` — the hand-offs it made to the next agent.
+ * A task id doubles as its thread id, so getThread/listMessages accept it.
+ */
+export async function listChildTasks(env: Env, parentTaskId: string): Promise<BrainbaseResult<{ items: BrainbaseTask[] }>> {
+  return call(env, 'GET', `/v2/tasks?parent_task_id=${encodeURIComponent(parentTaskId)}&limit=10`);
+}
+
 export async function listMessages(env: Env, threadId: string): Promise<BrainbaseResult<{ items: BrainbaseMessage[] }>> {
   return call(env, 'GET', `/v2/threads/${encodeURIComponent(threadId)}/messages`);
 }

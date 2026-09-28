@@ -54,7 +54,10 @@
     // Every /api/run is handed to the Vouch Orchestrator in Brainbase
     // (Surya's org, Vouch team). Runs are public, so this caps them site-wide.
     "RUN_DAILY_LIMIT": "30",
-    "BRAINBASE_ORCHESTRATOR_ID": "9569c1ed-a310-48b8-80ad-8e85d00554bb"
+    "BRAINBASE_ORCHESTRATOR_ID": "9569c1ed-a310-48b8-80ad-8e85d00554bb",
+    // Brainbase agent id per Vouch role, used to follow the hand-off chain
+    // so each agent's progress lands on its own dashboard row.
+    "BRAINBASE_AGENT_IDS": "{\"orchestrator\":\"9569c1ed-a310-48b8-80ad-8e85d00554bb\",\"auditor\":\"57376d91-1fd0-4e5f-8542-d1b8accae1ba\",\"builder\":\"8bf0f873-cf60-4243-a19d-51b066dfb8e6\",\"revenue\":\"86f7ed53-7aca-437a-943d-ab9fe3c9965f\",\"outreach\":\"b63cafdc-3d17-47b2-b69a-692ff5e7ef24\"}"
   }
 
   // Secrets (NOT here — .dev.vars locally, `wrangler secret put` for prod):

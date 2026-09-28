@@ -23,6 +23,8 @@ export type Env = {
   RUN_DAILY_LIMIT: string;
   /** Managed agent id of the Vouch Orchestrator in Brainbase. */
   BRAINBASE_ORCHESTRATOR_ID: string;
+  /** JSON: Vouch role -> Brainbase agent id, for following the hand-off chain. */
+  BRAINBASE_AGENT_IDS: string;
   LINEAR_TEAM_ID: string;
   LINEAR_STATE_TODO: string;
   LINEAR_STATE_AUDITED: string;
