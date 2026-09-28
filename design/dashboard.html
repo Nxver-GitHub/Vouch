@@ -529,6 +529,16 @@ ul.cites li.only{ color:var(--ink-2); }
 </main>
 
 <script>
+/* Every value below originates outside this app: Google Places display names
+   (owner-controlled), AI engine answer excerpts (shaped by arbitrary web
+   pages), and cited URLs. All of it reaches the DOM, so all of it is escaped.
+   The product ingests untrusted third-party text by definition — this is the
+   boundary where that stops being data and starts being markup. */
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+/* Anchors only ever point at our own https pages. */
+function safeHref(u){try{return new URL(String(u)).protocol==='https:'?String(u):'#';}catch(e){return '#';}}
+
 /* ============================================================
    EVENT FIXTURE
    Contract (locked — backend swaps this array for a live feed):
@@ -735,11 +745,11 @@ function renderFacts(newFacts){
   if (!facts.length){ body.innerHTML = '<tr><td colspan="5" class="empty">No probes returned yet.</td></tr>'; return; }
   body.innerHTML = facts.map(f =>
     '<tr class="fade">' +
-      '<td>' + f.key + '</td>' +
-      '<td class="stated">' + f.stated + '</td>' +
-      '<td class="expected">' + f.expected + '</td>' +
-      '<td class="engine">' + f.engine + '</td>' +
-      '<td><span class="verdict v-' + f.verdict + '">' + f.verdict + '</span></td>' +
+      '<td>' + esc(f.key) + '</td>' +
+      '<td class="stated">' + esc(f.stated) + '</td>' +
+      '<td class="expected">' + esc(f.expected) + '</td>' +
+      '<td class="engine">' + esc(f.engine) + '</td>' +
+      '<td><span class="verdict v-' + esc(f.verdict) + '">' + esc(f.verdict) + '</span></td>' +
     '</tr>').join("");
   const w = facts.filter(f => f.verdict === "wrong").length;
   const m = facts.filter(f => f.verdict === "missing").length;
@@ -761,12 +771,12 @@ function renderStreet(ev){
     .concat(ev.competitors.map(c => ({ name:c.name, lit:c.lit, you:false })));
   $("street").innerHTML = shops.map(s =>
     '<span class="shop' + (s.lit ? ' lit' : '') + (s.you ? ' you' : '') + '">' +
-    '<span class="bulb"></span>' + s.name + '</span>').join("");
+    '<span class="bulb"></span>' + esc(s.name) + '</span>').join("");
 }
 
 function renderUrl(url){
   if (!url) return;
-  $("urlslot").outerHTML = '<a id="urlslot" class="fade" href="' + url + '" target="_blank" rel="noopener">' + url + '</a>';
+  $("urlslot").outerHTML = '<a id="urlslot" class="fade" href="' + esc(safeHref(url)) + '" target="_blank" rel="noopener">' + esc(url) + '</a>';
   $("deploy").style.borderColor = "var(--rule-hot)";
 }
 
@@ -779,12 +789,12 @@ function renderOverlap(o){
 
   $("nd-engine").textContent = o.engine;
   $("nd-gap").textContent = o.gap;
-  $("nd-q").innerHTML = "&ldquo;" + o.query + "&rdquo;";
+  $("nd-q").innerHTML = "&ldquo;" + esc(o.query) + "&rdquo;";
   $("nd-a-stamp").textContent = o.a.ts;
   $("nd-b-stamp").textContent = o.b.ts;
 
   const li = (s, isShared) =>
-    '<li class="' + (isShared ? "shared" : "only") + '"><span class="box"></span>' + s + '</li>';
+    '<li class="' + (isShared ? "shared" : "only") + '"><span class="box"></span>' + esc(s) + '</li>';
   $("nd-a").innerHTML = A.map(s => li(s, setB.has(s))).join("");
   $("nd-b").innerHTML = B.map(s => li(s, setA.has(s))).join("");
 
