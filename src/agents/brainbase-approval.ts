@@ -65,6 +65,9 @@ export async function verifyApprovalLink(env: Env, taskId: string, exp: number, 
  * back the fallback link so the email can be approved.
  */
 export async function requestApproval(env: Env, taskId: string): Promise<string> {
+  if (!env.SLACK_SIGNING_SECRET || !env.SLACK_BOT_TOKEN) {
+    return 'Draft ready, but approval is not set up here (SLACK_BOT_TOKEN / SLACK_SIGNING_SECRET missing). Nothing was sent.';
+  }
   const link = await approvalLink(env, taskId);
   const draft = (await lastAssistantText(env, taskId)) || '(Outreach did not return a draft.)';
   const clipped = draft.length > DRAFT_CHARS ? `${draft.slice(0, DRAFT_CHARS)}…` : draft;
