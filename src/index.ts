@@ -229,6 +229,28 @@ app.get('/api/events/:runId', async (c) => {
   return c.json({ events: results ?? [] });
 });
 
+/**
+ * Saved runs — the operator view. Runs are public to START, but the list of
+ * every run (which businesses were audited, and how each ended) is gated by
+ * RUN_ACCESS_TOKEN. Fails closed: no token configured means no list.
+ * Each row carries the run's first and last event so the list reads without
+ * a second request; the full run replays from /api/events via ?run=<id>.
+ */
+app.get('/api/runs', async (c) => {
+  if (!(await requireRunToken(c.req.raw, c.env))) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+  const { results } = await c.env.DB.prepare(
+    'SELECT r.id, r.status, r.started_at, r.finished_at, ' +
+      '(SELECT message FROM events e WHERE e.run_id = r.id ORDER BY e.id ASC LIMIT 1) AS first_message, ' +
+      '(SELECT agent FROM events e WHERE e.run_id = r.id ORDER BY e.id DESC LIMIT 1) AS last_agent, ' +
+      '(SELECT state FROM events e WHERE e.run_id = r.id ORDER BY e.id DESC LIMIT 1) AS last_state, ' +
+      '(SELECT message FROM events e WHERE e.run_id = r.id ORDER BY e.id DESC LIMIT 1) AS last_message ' +
+      'FROM runs r ORDER BY r.started_at DESC LIMIT 25',
+  ).all();
+  return c.json({ runs: results ?? [] }, 200, { 'cache-control': 'no-store' });
+});
+
 /* ------------------------------------------------------------------ *
  * Inbound webhooks
  * ------------------------------------------------------------------ */
