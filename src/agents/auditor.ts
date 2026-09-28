@@ -203,7 +203,12 @@ async function paid<T>(
 }
 
 function excerpt(text: string): string {
-  const flat = text.replace(/\s+/g, ' ').trim();
+  // Engines answer in markdown; the sheet shows plain words. Strip emphasis
+  // markers and heading hashes, never the words themselves.
+  const flat = text
+    .replace(/[*_`#]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return flat.length > EXCERPT_CHARS ? `${flat.slice(0, EXCERPT_CHARS)}…` : flat;
 }
 
