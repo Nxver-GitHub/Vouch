@@ -63,6 +63,38 @@ only, two or three, at doors. No lettering on any sign; leave sign boards blank.
 - This is the masthead image. It sits under the sentence "Customers ask AI what's good
   nearby." It should read at a glance from ten feet: a street, some lit windows.
 
+#### 1b. Approved alternative for the hero: line-printer ASCII art
+
+You may make the street strip as ASCII art instead of a line drawing, if it looks
+better. It fits the world: 1960s and 70s annual reports came off the same chain
+printers that produced ASCII art, and our data face is already a mono. It only works
+under these conditions:
+
+- **It is ink on paper, never light on black.** Characters in ink `#1B1A17` and
+  secondary ink `#5E5A52` on the paper ground. No green, no phosphor, no scanlines, no
+  CRT curvature. If it reads as a terminal, it fails.
+- **Amber is still the only warm colour** and still means a lit window. Lit windows
+  are the only characters in `#D98E1F`. Nothing else is coloured.
+- **Set it in IBM Plex Mono** (the page's data face) so it matches the dashboard when
+  the two sit together. Fixed grid, no proportional glyphs, no box-drawing Unicode
+  beyond the basic set; keep to printable ASCII so it survives every font fallback.
+- **Density does the drawing.** Awnings, brick, glass and sky are different character
+  densities (`.`, `:`, `=`, `#`, `@`), the way a line printer would shade them. Avoid
+  outlining everything with `|` and `_`; that reads as a wireframe, not a street.
+- **Deliver both forms:** the raw text (`hero-street.txt`, 80 to 160 columns wide,
+  no trailing spaces) and a rendered PNG at 1x and 2x on transparent or paper. The
+  page will use the PNG; the text is the source of truth and lets us re-render or
+  animate a lit window later by swapping one character.
+- **Same acceptance test.** From ten feet it must read as a street with countable lit
+  windows. If it only reads as texture, it fails.
+
+Consistency note: the interactive street below the hero stays 3D sprites. The two
+coexist only if the hero is clearly "the surveyor's sketch on the notebook page" and
+the sprites are "the models on the desk". Keep the ASCII strip framed like a page,
+with generous paper margin, so the difference reads as intentional.
+
+If you try both, deliver both and say which you'd ship.
+
 ### 2. The benchmark plate, rendered — `plate-3d.png`, `plate-3d@2x.png`
 
 The dashboard draws the plate as a flat SVG symbol (see `design/dashboard.html`,
