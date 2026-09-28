@@ -43,7 +43,7 @@
     "PUBLIC_BASE_DOMAIN": "usevouch.dev",
     "RUN_BUDGET_USD": "2.00",
     "AGENT_STEP_LIMIT": "24",
-    "SLACK_OPS_CHANNEL": "#ops",
+    "SLACK_OPS_CHANNEL": "#vouch-agents",
     "RESEND_FROM": "vouch@usevouch.dev",
     "LINEAR_TEAM_ID": "a1ec0397-3b49-4835-adcd-18416b39d2d5",
     "LINEAR_STATE_TODO": "b875c0bb-1035-4db2-bf5c-68863a12bcfc",
