@@ -27,6 +27,9 @@ import { parseInteraction, respondToInteraction } from './lib/slack';
 
 const app = new Hono<{ Bindings: Env }>();
 
+/** Keeps proxies from idling out the /api/run stream during a long probe. */
+const HEARTBEAT_MS = 5_000;
+
 /* ------------------------------------------------------------------ *
  * Wildcard host routing — runs before everything else.
  * ------------------------------------------------------------------ */
@@ -111,6 +114,21 @@ app.get('/', async (c) => {
   );
 });
 
+/**
+ * Static sprites for the dashboard, served from R2 under `app/assets/`.
+ * The name is whitelisted to a flat, lowercase PNG filename — no traversal,
+ * no nested keys, nothing but what the design handoff produced.
+ */
+app.get('/assets/:name', async (c) => {
+  const name = c.req.param('name');
+  if (!/^[a-z0-9-]+(@2x)?\.png$/.test(name)) return c.text('Not found', 404);
+  const obj = await c.env.PROFILES.get(`app/assets/${name}`);
+  if (!obj) return c.text('Not found', 404);
+  return new Response(obj.body, {
+    headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600' },
+  });
+});
+
 /* ------------------------------------------------------------------ *
  * API
  * ------------------------------------------------------------------ */
@@ -140,15 +158,47 @@ app.post('/api/run', async (c) => {
   const name = body.name?.trim();
   if (!name || name.length > 120) return c.json({ error: 'name required (max 120)' }, 400);
 
+  let run: Awaited<ReturnType<typeof startRun>>;
   try {
-    const run = await startRun(c.env, c.executionCtx, {
+    run = await startRun(c.env, c.executionCtx, {
       name,
       city: body.city?.trim() || 'San Francisco',
     });
-    return c.json(run, 202);
   } catch (e) {
     return c.json({ error: safeError(e) }, 500);
   }
+
+  // Stream, don't fire-and-forget. Cloudflare cancels waitUntil() work 30s
+  // after a response completes; a body that is still streaming has no limit.
+  // The client must hold the connection open until `done` — the dashboard and
+  // the CLI runner both do. Writes to a disconnected client reject; those are
+  // swallowed so the pipeline itself never depends on the socket.
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+  const write = (line: Record<string, unknown>): Promise<void> =>
+    writer.write(encoder.encode(`${JSON.stringify(line)}\n`)).catch(() => undefined);
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      await write({ runId: run.runId, businessName: run.businessName });
+      const beat = setInterval(() => void write({ heartbeat: Date.now() }), HEARTBEAT_MS);
+      try {
+        await run.pipeline;
+        await write({ done: true, runId: run.runId });
+      } catch (e) {
+        await write({ done: true, runId: run.runId, error: safeError(e) });
+      } finally {
+        clearInterval(beat);
+        await writer.close().catch(() => undefined);
+      }
+    })(),
+  );
+
+  return new Response(readable, {
+    status: 202,
+    headers: { 'content-type': 'application/x-ndjson', 'cache-control': 'no-store' },
+  });
 });
 
 app.get('/api/events/:runId', async (c) => {

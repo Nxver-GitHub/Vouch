@@ -61,6 +61,11 @@ they return, prefer the MCP servers above and say so when a fact is unverified.
   partial failure** — always check the `errors` array.
 - Claude web search: `web_search_20260318`. Set `allowed_callers: ["direct"]` or you
   get a 400. ~$10/1k searches, plus results billed as input tokens on later turns.
+- **`ctx.waitUntil()` is cancelled 30 s after the response completes** (HTTP
+  invocations have no wall-clock limit only while the body is still streaming).
+  Never run the pipeline behind a returned JSON response — `/api/run` streams
+  NDJSON heartbeats until the pipeline settles. Two live runs died silently
+  before this was found.
 - Cloudflare edge bot protection returns **1010** to scripted user-agents. Verified
   that `OAI-SearchBot`, `ClaudeBot` and `Googlebot` are NOT blocked. Re-test if Bot
   Fight Mode is ever enabled — the product thesis depends on crawlers reading pages.

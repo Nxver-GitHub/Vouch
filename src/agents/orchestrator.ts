@@ -30,7 +30,18 @@ export type StartRunInput = { name: string; city: string; neighborhood?: string 
  * ExecutionContext definition (Hono's or workers-types') wins the import.
  */
 export type Waitable = { waitUntil: (p: Promise<unknown>) => void };
-export type StartRunResult = { runId: string; businessName: string };
+export type StartRunResult = {
+  runId: string;
+  businessName: string;
+  /**
+   * The running pipeline. The caller MUST keep the HTTP response streaming
+   * until this settles: Cloudflare cancels `waitUntil` work 30 seconds after
+   * the response completes (verified — workers/runtime-apis/context), and an
+   * audit takes longer than that. A streaming body keeps the invocation alive
+   * with no wall-clock limit; `waitUntil` is only the 30s grace on disconnect.
+   */
+  pipeline: Promise<void>;
+};
 
 /** Buffered so a chatty pipeline costs one D1 write, not twenty. */
 class EventBuffer {
@@ -81,9 +92,10 @@ class EventBuffer {
 }
 
 /**
- * Create the run and its budget row, then hand back immediately. The pipeline
- * itself runs in the background so `/api/run` answers fast and the dashboard
- * starts polling events straight away.
+ * Create the run and its budget row, then hand back immediately with the
+ * pipeline promise. `/api/run` streams heartbeats over that promise so the
+ * dashboard can start polling events straight away while the invocation stays
+ * alive for as long as the audit takes.
  */
 export async function startRun(
   env: Env,
@@ -105,8 +117,9 @@ export async function startRun(
     ).bind(runId, cap, now),
   ]);
 
-  ctx.waitUntil(runPipeline(env, runId, input));
-  return { runId, businessName: input.name };
+  const pipeline = runPipeline(env, runId, input);
+  ctx.waitUntil(pipeline);
+  return { runId, businessName: input.name, pipeline };
 }
 
 async function runPipeline(env: Env, runId: string, input: StartRunInput): Promise<void> {
@@ -185,7 +198,18 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
       events.add('revenue', 'failed', `Offer failed: ${offer.error}`);
     }
 
-    events.add('orchestrator', 'done', 'Run complete.');
+    // The ledger is the only honest source for the cost strip: every paid call
+    // reserved against it atomically. One read, reported once, at the end.
+    const ledger = await env.DB.prepare(
+      'SELECT engines_usd, decide_usd, write_usd, cap_usd FROM budgets WHERE run_id = ?',
+    )
+      .bind(runId)
+      .first<{ engines_usd: number; decide_usd: number; write_usd: number; cap_usd: number }>();
+    events.add('orchestrator', 'done', 'Run complete.', {
+      cost: ledger
+        ? { engines: ledger.engines_usd, decisions: ledger.decide_usd, writing: ledger.write_usd, cap: ledger.cap_usd }
+        : undefined,
+    });
   } catch (e) {
     // Fail loudly and visibly. A silent stall on stage is worse than an error.
     const detail = safeError(e);

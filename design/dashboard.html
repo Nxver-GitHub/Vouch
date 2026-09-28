@@ -247,6 +247,37 @@ table.sheet tr:last-child td{ border-bottom:0; }
 .empty{ color:var(--ink-3); font-size:17px; padding:10px 0; }
 
 /* ================= STREET / RANK ================= */
+
+/* pre-rendered isometric street strip — see design/BLENDER-HANDOFF.md.
+   Sprites read ~120px tall against #0b0d10; street.png tiles beneath
+   them via background-repeat. Lighting is driven only by `lit`; the
+   plaque (payment) and sign (deploy) are independent overlays. */
+.stage{
+  position:relative;
+  height:160px;
+  margin-bottom:16px;
+  border-bottom:1px solid var(--rule);
+  background-image:url("assets/street.png");
+  background-repeat:repeat-x;
+  background-position:bottom left;
+  background-size:160px 40px;
+}
+.stage-shops{
+  position:absolute; left:0; right:0; bottom:24px;
+  display:flex; align-items:flex-end; gap:12px;
+  padding:0 12px; overflow-x:auto;
+}
+.stage-shop{
+  position:relative; height:120px; flex:0 0 auto;
+}
+.stage-shop .sprite{ position:absolute; left:0; bottom:0; display:block; }
+.stage-shop .plaque{
+  position:absolute; left:30%; top:38%; width:26%; height:auto; display:block;
+}
+.stage-shop .sign{
+  position:absolute; left:-34px; bottom:0; width:40px; height:auto; display:block;
+}
+
 .rankline{
   display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
   font-size:22px; padding-bottom:16px;
@@ -465,6 +496,9 @@ ul.cites li.only{ color:var(--ink-2); }
           <span class="lbl">lit = cited by an engine</span>
         </div>
         <div class="body">
+          <div class="stage" id="stage" aria-hidden="true">
+            <div class="stage-shops" id="stageShops"></div>
+          </div>
           <div class="rankline" id="rankline"><span style="color:var(--ink-3);font-size:18px">Rank pending.</span></div>
           <div class="street" id="street"></div>
         </div>
@@ -637,6 +671,11 @@ const EVENTS = [
     competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
     message:"Payment link live. Poll armed at 2s; webhook is the backup, not the primary." },
 
+  { run_id:"run_9f2a41", ts:1790000061, agent:"revenue", state:"paid",
+    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
+    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Payment confirmed via poll. Monitoring plaque applied — lighting state is unaffected by payment." },
+
   { run_id:"run_9f2a41", ts:1790000064, agent:"outreach", state:"working",
     business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
     competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
@@ -695,6 +734,10 @@ const agentEls = {};
 
 /* ---------- state ---------- */
 let timers = [], facts = [], t0 = 0, clockTimer = null;
+/* street-scene sprite state — see design/BLENDER-HANDOFF.md. Lighting comes
+   only from business/competitors[].lit. `stagePaid` and `stageSignVisible`
+   are separate channels: payment never touches lighting. */
+let stageBusiness = null, stageCompetitors = [], stagePaid = false, stageSignVisible = false;
 
 function gradeFor(s){
   if (s === null || s === undefined) return "—";
@@ -712,8 +755,10 @@ const money = n => "$" + Number(n).toFixed(2);
 
 /* ---------- renderers ---------- */
 function renderAgent(ev){
-  // any state that is not idle/done is treated as working; raw state is shown verbatim
-  const bucket = ev.state === "done" ? "done" : (ev.state === "idle" ? "idle" : "working");
+  // any state that is not idle/done is treated as working; raw state is shown verbatim.
+  // 'paid' (revenue agent, payment-confirmed) is a terminal state like 'done' for
+  // the timeline row — it does not, however, drive any lighting.
+  const bucket = (ev.state === "done" || ev.state === "paid") ? "done" : (ev.state === "idle" ? "idle" : "working");
   const el = agentEls[ev.agent];
   if (!el) return;
   AGENTS.forEach(a => agentEls[a.id].row.classList.remove("active"));
@@ -774,6 +819,39 @@ function renderStreet(ev){
     '<span class="bulb"></span>' + esc(s.name) + '</span>').join("");
 }
 
+/* Isometric street strip — pre-rendered PNG sprites, see BLENDER-HANDOFF.md.
+   `kind` is always the literal 'hero' or 'shop', `lit` is a boolean, so
+   these paths are never built from untrusted event text. */
+const SPRITE_H = 120;          // px — the handoff's projector-legibility test
+const SPRITE_AR = 512 / 768;   // sprite native width / height
+function spriteSrc(kind, lit){ return "assets/" + kind + "-" + (lit ? "lit" : "dark") + ".png"; }
+function spriteSrcset(kind, lit){
+  const base = kind + "-" + (lit ? "lit" : "dark");
+  return "assets/" + base + ".png 1x, assets/" + base + "@2x.png 2x";
+}
+
+function renderStage(){
+  const host = $("stageShops");
+  if (!host || !stageBusiness) return;
+  const w = Math.round(SPRITE_H * SPRITE_AR);
+  const shops = [{ name: stageBusiness.name, lit: !!stageBusiness.lit, you: true }]
+    .concat((stageCompetitors || []).map(c => ({ name: c.name, lit: !!c.lit, you: false })));
+  host.innerHTML = shops.map(s => {
+    const kind = s.you ? "hero" : "shop";
+    let inner = '<img class="sprite" width="' + w + '" height="' + SPRITE_H + '" ' +
+      'src="' + spriteSrc(kind, s.lit) + '" srcset="' + spriteSrcset(kind, s.lit) + '" alt="">';
+    // Plaque = "monitoring is active" (payment). Independent of lighting on purpose.
+    if (s.you && stagePaid){
+      inner += '<img class="plaque" src="assets/plaque.png" srcset="assets/plaque.png 1x, assets/plaque@2x.png 2x" alt="">';
+    }
+    // Sign = the Builder's page is live. Independent of lighting and of payment.
+    if (s.you && stageSignVisible){
+      inner += '<img class="sign" src="assets/sign.png" srcset="assets/sign.png 1x, assets/sign@2x.png 2x" alt="">';
+    }
+    return '<div class="stage-shop" style="width:' + w + 'px" title="' + esc(s.name) + '">' + inner + '</div>';
+  }).join("");
+}
+
 function renderUrl(url){
   if (!url) return;
   $("urlslot").outerHTML = '<a id="urlslot" class="fade" href="' + esc(safeHref(url)) + '" target="_blank" rel="noopener">' + esc(url) + '</a>';
@@ -825,6 +903,13 @@ function applyEvent(ev){
   if (ev.url) renderUrl(ev.url);
   if (ev.overlap) renderOverlap(ev.overlap);
   if (ev.cost) renderCost(ev.cost);
+
+  // -- street-scene sprites (lighting / plaque / sign are three separate channels) --
+  if (ev.business) stageBusiness = ev.business;
+  if (ev.competitors && ev.competitors.length) stageCompetitors = ev.competitors;
+  if (ev.agent === "revenue" && ev.state === "paid") stagePaid = true;
+  if (ev.agent === "builder" && ev.state === "done" && ev.url) stageSignVisible = true;
+  if (stageBusiness) renderStage();
 }
 window.applyEvent = applyEvent;   // live feed swaps EVENTS playback for calls to this
 
@@ -834,6 +919,9 @@ function stop(){ timers.forEach(clearTimeout); timers = []; if (clockTimer) clea
 function reset(){
   stop();
   facts = [];
+  stageBusiness = null; stageCompetitors = []; stagePaid = false; stageSignVisible = false;
+  const stageHost = $("stageShops");
+  if (stageHost) stageHost.innerHTML = "";
   $("led").className = "led";
   $("runid").textContent = "run — idle";
   $("clock").textContent = "t+00.0s";
@@ -898,6 +986,86 @@ document.addEventListener("keydown", e => {
 if (new URLSearchParams(location.search).get("demo") === "replay"){
   setTimeout(play, 400);
 }
+
+/* ============================================================
+   LIVE MODE — ?run=<runId>
+   Polls the Worker's event feed instead of playing the fixture.
+   Fails loudly: a bad run id is refused, a fetch error is logged
+   and retried, never silently swallowed or papered over with a
+   guessed value.
+   ============================================================ */
+(function liveMode(){
+  const runId = new URLSearchParams(location.search).get("run");
+  if (!runId) return; // fixture demo mode, untouched
+
+  if (!/^[0-9a-f-]{36}$/.test(runId)){
+    console.error("Vouch dashboard: ignoring malformed run id in URL:", runId);
+    return;
+  }
+
+  let since = 0;
+  let stopped = false;
+
+  function parseRow(row){
+    let payload;
+    try{
+      payload = row && row.payload_json ? JSON.parse(row.payload_json) : {};
+    }catch(e){
+      console.error("Vouch dashboard: unparsable payload_json for row, skipping", e);
+      return null;
+    }
+    if (!payload || typeof payload !== "object") payload = {};
+    // row fields win over payload fields for the envelope keys.
+    return Object.assign({}, payload, {
+      run_id: row.run_id,
+      ts: row.ts,
+      agent: row.agent,
+      state: row.state,
+      message: row.message
+    });
+  }
+
+  async function poll(){
+    if (stopped) return;
+    try{
+      const res = await fetch(
+        "/api/events/" + encodeURIComponent(runId) + "?since=" + encodeURIComponent(since),
+        { credentials: "same-origin" }
+      );
+      if (!res.ok){
+        console.error("Vouch dashboard: /api/events poll failed:", res.status);
+      } else {
+        const body = await res.json();
+        // The endpoint returns { events: [...] } — never a bare array.
+        const rows = body && Array.isArray(body.events) ? body.events : null;
+        if (!rows){
+          console.error("Vouch dashboard: /api/events returned an unexpected shape", body);
+        } else {
+          rows.forEach(row => {
+            const ev = parseRow(row);
+            if (!ev) return;
+            if (typeof ev.ts === "number" && ev.ts > since) since = ev.ts;
+            window.applyEvent(ev);
+            if (ev.agent === "orchestrator" && (ev.state === "done" || ev.state === "failed")){
+              stopped = true;
+              $("led").className = ev.state === "done" ? "led done" : "led";
+            }
+          });
+        }
+      }
+    }catch(e){
+      console.error("Vouch dashboard: /api/events poll errored:", e);
+    }
+    if (!stopped) setTimeout(poll, 2000);
+  }
+
+  // Live mode owns the console; fixture playback controls don't apply.
+  $("btn-run").disabled = true;
+  $("btn-reset").disabled = true;
+  $("runid").textContent = runId;
+  $("led").className = "led live";
+  poll();
+})();
 </script>
 </body>
 </html>

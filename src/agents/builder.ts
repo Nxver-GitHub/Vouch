@@ -35,7 +35,6 @@ import {
 
 const TEMPLATE_KEY = 'app/profile-template.html';
 const PROFILE_KEY_PREFIX = 'profiles/';
-const HEALTH_CHECK_TIMEOUT_MS = 10_000;
 const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const COPY_MAX_TOKENS = 1024;
@@ -426,14 +425,19 @@ function fillTemplate(html: string, tokens: Readonly<Record<string, string>>): s
   return out.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
 }
 
-async function healthCheck(env: Env, slug: string): Promise<number | null> {
+/**
+ * Read-back check against R2, NOT an HTTP fetch of the public URL. A Worker's
+ * subrequest to a hostname on its own zone is routed to the zone's origin (the
+ * `100::` placeholder here), not back through the Worker — every self-fetch
+ * returned 522 on the first live run. Returns the byte count that R2 serves,
+ * or null if the object is missing or unreadable. External liveness is
+ * verified from outside (the dashboard link, the CLI runner), never faked here.
+ */
+async function healthCheck(env: Env, r2Key: string): Promise<number | null> {
   try {
-    const res = await fetch(`https://${slug}.${env.PUBLIC_BASE_DOMAIN}`, {
-      signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS),
-    });
-    return res.status;
+    const head = await env.PROFILES.head(r2Key);
+    return head ? head.size : null;
   } catch {
-    // Network failure — recorded as null, never papered over as a fake 200.
     return null;
   }
 }
@@ -492,11 +496,16 @@ export async function runBuilder(env: Env, runId: string, audit: AuditorResult):
     const url = `https://${audit.slug}.${env.PUBLIC_BASE_DOMAIN}`;
     emit({ state: 'working', message: `published ${url} — checking health`, url });
 
-    const healthStatus = await healthCheck(env, audit.slug);
-    const published = healthStatus != null && healthStatus < 500;
+    const storedBytes = await healthCheck(env, r2Key);
+    const published = storedBytes != null && storedBytes === new TextEncoder().encode(html).byteLength;
+    // `healthStatus` keeps its column: 200 means R2 read-back matched byte-for-byte,
+    // null means it did not. It is not an HTTP probe — see healthCheck().
+    const healthStatus = published ? 200 : null;
     emit({
       state: published ? 'done' : 'failed',
-      message: published ? `${url} is live (HTTP ${healthStatus})` : `health check failed (HTTP ${healthStatus ?? 'no response'})`,
+      message: published
+        ? `${url} published — R2 read-back OK (${storedBytes} bytes)`
+        : `R2 read-back failed (${storedBytes == null ? 'object missing' : `${storedBytes} bytes stored`})`,
       url,
     });
 

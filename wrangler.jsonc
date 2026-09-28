@@ -42,7 +42,7 @@
   "vars": {
     "PUBLIC_BASE_DOMAIN": "usevouch.dev",
     "RUN_BUDGET_USD": "2.00",
-    "AGENT_STEP_LIMIT": "10",
+    "AGENT_STEP_LIMIT": "24",
     "SLACK_OPS_CHANNEL": "#ops",
     "RESEND_FROM": "vouch@usevouch.dev",
     "LINEAR_TEAM_ID": "a1ec0397-3b49-4835-adcd-18416b39d2d5",

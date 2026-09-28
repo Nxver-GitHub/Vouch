@@ -88,8 +88,10 @@ export type GradedFact = {
   verdict: FactVerdict;
   /** 0..2 index into SEVERITY_MULTIPLIER. */
   severityIndex: number;
-  /** Lowest confidence across the Jev answers that produced this verdict. */
+  /** Lowest confidence across the Jev answers that gate this verdict. */
   confidence: number;
+  /** Per-question confidences, kept so a review item can say WHICH one was weak. */
+  confidences: { presence: number; correct: number; severity: number };
 };
 
 export type ReviewItem = {
@@ -296,19 +298,27 @@ export async function probeAll(
   probes: readonly ProbeQuestion[],
   steps: StepBudget,
 ): Promise<readonly ProbeOutcome[]> {
-  const outcomes: ProbeOutcome[] = [];
-  for (const engine of ACTIVE_ENGINES) {
-    for (const probe of probes) {
-      const outcome = await runOneProbe(env, runId, engine, probe, steps);
-      if (!outcome.ok) {
-        await emit(env, runId, {
+  // All engine×probe pairs run concurrently. Each probe carries a 60s timeout,
+  // so a sequential loop could take 6+ minutes of wall clock inside a single
+  // waitUntil — which is exactly how the first live run died silently. Every
+  // piece of shared state this touches is safe under concurrency: `steps.take`
+  // is a synchronous counter, `paid()` is one atomic D1 statement, and `emit`
+  // is an independent insert. Promise.all preserves input order, so `outcomes`
+  // still lines up with the probes the classifier expects.
+  const pairs = ACTIVE_ENGINES.flatMap((engine) => probes.map((probe) => ({ engine, probe })));
+  const outcomes = await Promise.all(
+    pairs.map(({ engine, probe }) => runOneProbe(env, runId, engine, probe, steps)),
+  );
+  await Promise.all(
+    outcomes
+      .filter((o): o is Extract<ProbeOutcome, { ok: false }> => !o.ok)
+      .map((o) =>
+        emit(env, runId, {
           state: 'failed',
-          message: `probe failed — ${engine}/${probe.key}: ${outcome.error}`,
-        });
-      }
-      outcomes.push(outcome);
-    }
-  }
+          message: `probe failed — ${o.engine}/${o.probe.key}: ${o.error}`,
+        }),
+      ),
+  );
   return outcomes;
 }
 
@@ -392,9 +402,19 @@ async function classifyOne(
     },
     severityIndex: Math.min(SEVERITY_MULTIPLIER.length - 1, Math.max(0, Math.round(severity.score))),
     // `severity` scales the loss term in scoreAudit, so an uncertain severity
-    // moves the published number just as much as an uncertain verdict does.
-    // It has to clear the same floor.
-    confidence: Math.min(confidenceOf(presence), confidenceOf(correct), confidenceOf(severity)),
+    // moves the published number just as much as an uncertain verdict does —
+    // but only when there IS a loss term. A 'correct' verdict contributes zero
+    // loss whatever the severity says, so gating it on severity confidence
+    // threw away good verdicts for no reason (5 of 6 on the first live run).
+    confidence:
+      verdict === 'correct'
+        ? Math.min(confidenceOf(presence), confidenceOf(correct))
+        : Math.min(confidenceOf(presence), confidenceOf(correct), confidenceOf(severity)),
+    confidences: {
+      presence: confidenceOf(presence),
+      correct: confidenceOf(correct),
+      severity: confidenceOf(severity),
+    },
   };
 }
 
@@ -419,7 +439,10 @@ export async function classify(
         factKey: fact.verdict.factKey,
         engine: fact.verdict.engine,
         confidence: fact.confidence,
-        reason: 'below the 0.6 confidence floor — excluded from the published score',
+        reason:
+          `below the ${CONFIDENCE_REVIEW} confidence floor — excluded from the published score ` +
+          `(presence ${fact.confidences.presence.toFixed(2)}, correct ${fact.confidences.correct.toFixed(2)}, ` +
+          `severity ${fact.confidences.severity.toFixed(2)})`,
       });
       continue;
     }
