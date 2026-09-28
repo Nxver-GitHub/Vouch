@@ -66,15 +66,12 @@ a:hover{text-decoration-color:var(--strong);}
   max-width:var(--max); margin:0 auto; padding:20px var(--gut);
   display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:22px;
 }
-.ident{display:flex; align-items:center; gap:14px; min-width:0;}
-.plate{width:222px; height:47px; color:var(--brass); display:block; flex:0 0 auto;}
-.plate text{font-family:var(--mono); fill:var(--ink-2);}
-.plate .t-engine{fill:var(--ink); font-size:11px; letter-spacing:.02em;}
-.plate .t-meta{font-size:8.5px; letter-spacing:.02em;}
+.ident{display:flex; align-items:baseline; gap:10px; min-width:0;}
+.datum{width:18px; height:18px; color:var(--brass); flex:0 0 auto; align-self:center;}
+.wordmark{font:400 30px/1 var(--serif); color:var(--ink); letter-spacing:-.01em;}
 .word{font:600 18px/1 var(--sans); letter-spacing:.02em;}
-h1.claim{
-  font:400 24px/1.22 var(--serif); color:var(--ink); min-width:0;
-  border-left:1px solid var(--hair); padding-left:22px; text-wrap:balance;
+.claim{
+  margin:0; font:400 15px/1.4 var(--sans); color:var(--ink-2); min-width:0; text-wrap:balance;
 }
 .runstat{
   display:none; align-items:baseline; gap:14px; white-space:nowrap;
@@ -288,7 +285,7 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
 @media (max-width:900px){
   :root{--gut:20px;}
   .mast-in{grid-template-columns:1fr; gap:16px;}
-  h1.claim{border-left:0; padding-left:0; font-size:24px;}
+  .claim{font-size:14px;}
   .runstat{white-space:normal;}
   .reading{grid-template-columns:1fr; gap:24px;}
   .cols{grid-template-columns:1fr 1fr; column-gap:16px;}
@@ -338,15 +335,10 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
 <header class="mast">
   <div class="mast-in">
     <div class="ident">
-      <svg class="plate" viewBox="0 0 222 47" role="img" aria-labelledby="plate-t">
-        <title id="plate-t">Benchmark plate: instrument, date and pinned engine version</title>
-        <use href="#g-plate"/>
-        <text class="t-engine" id="plate-engine" x="58" y="22">Instrument idle</text>
-        <text class="t-meta" id="plate-meta" x="58" y="35">no reading yet</text>
-      </svg>
-      <span class="word">Vouch</span>
+      <svg class="datum" viewBox="0 0 16 16" role="img" aria-label="Vouch"><use href="#g-datum"/></svg>
+      <span class="wordmark">Vouch</span>
     </div>
-    <h1 class="claim">Customers ask AI what&rsquo;s good nearby. We grade the answers.</h1>
+    <p class="claim">Customers ask AI what&rsquo;s good nearby. We grade the answers.</p>
     <div class="runstat" id="runstat">
       <span class="biz" id="run-biz"></span>
       <span class="el" id="clock">00:00</span>
@@ -444,6 +436,7 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
     <span>Engines probed: <b>Claude, with web search</b></span>
     <span>Ground truth: <b>Google Places (New)</b></span>
     <span>We measure answers; we do not claim to change them.</span>
+    <span class="rid"><span id="plate-engine">Instrument idle</span> &middot; <span id="plate-meta">no reading yet</span></span>
     <span class="rid" id="runid">run id not assigned</span>
   </div>
 
