@@ -7,6 +7,18 @@
 <title>{{H1_QUESTION}} — {{BUSINESS_NAME}}</title>
 <meta name="description" content="{{META_DESCRIPTION}}">
 <link rel="canonical" href="https://{{SLUG}}.usevouch.dev/">
+<link rel="icon" type="image/png" href="https://usevouch.dev/assets/plate-64.png">
+<link rel="apple-touch-icon" href="https://usevouch.dev/assets/plate-128.png">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{H1_QUESTION}}">
+<meta property="og:description" content="{{META_DESCRIPTION}}">
+<meta property="og:url" content="https://{{SLUG}}.usevouch.dev/">
+<meta property="og:image" content="https://usevouch.dev/assets/og-card.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;600&family=Instrument+Serif&display=swap">
 
 <!--
   ============================================================
@@ -15,209 +27,196 @@
 
   HARD RULE (measured, not assumed):
   0 of 5 AI systems extracted a fact that existed ONLY in JSON-LD.
-  => EVERY fact below appears as VISIBLE HTML TEXT.
-     The JSON-LD at the bottom is a SUPPLEMENT and duplicates
-     facts that are already readable on the page. Never move a
-     fact into the JSON-LD and out of the prose.
+  => EVERY fact below appears as VISIBLE HTML TEXT. The JSON-LD
+     is a SUPPLEMENT and duplicates facts already readable on the
+     page. Never move a fact out of the prose and into it.
 
-  This is a "best {{CATEGORY_PLURAL}} in {{NEIGHBORHOOD}}" answer
-  page, not a profile page. H1 = the highest-intent probe this
-  business is losing.
+  THE RULE THAT SHAPES THIS FILE:
+  A SECTION RENDERS ONLY IF EVERY FACT IN IT HAS A VERIFIED
+  SOURCE. There are no numbered repeating slots here any more —
+  blank slots are what made the first pages read as doorway spam.
+  Sections are assembled by renderX() functions in
+  src/agents/builder.ts, each of which returns '' when its source
+  is absent. This file holds only the shell:
 
-  SUBSTITUTION: every dynamic value is a flat {{MUSTACHE}} token
-  so the Worker can do plain string replacement — no template
-  engine, no loops. Repeating regions use numbered slots.
-  Unused numbered slots should be replaced with an empty string
-  by the Worker; the surrounding row markup is inside
-  {{ROW_*_OPEN}}/{{ROW_*_CLOSE}}-free plain blocks that degrade
-  to blank lines harmlessly.
+    a NAME slot       one escaped string  (BUSINESS_NAME, BYLINE, …)
+    a *_SECTION slot  a block of already-escaped HTML, or ''
+
+  Adding a fact means adding a renderX() in builder.ts, never a
+  placeholder row here.
   ============================================================
 -->
 
 <style>
 /* ============================================================
-   Light. Printed field report / neighbourhood broadsheet.
-   Must read as a real business's own site, not a SaaS landing.
-   System fonts only — venue wifi must not be able to break this.
+   The Survey Office, daylight edition — see DESIGN.md.
+   Warm paper ground, ink, hairlines (never boxes or shadows).
+   Instrument Serif for the H1 only; Plex Sans for prose;
+   Plex Mono for data values. Every face has a system fallback,
+   so venue wifi cannot break this page. Zero CDN JS.
    ============================================================ */
 
 :root{
-  --paper:   #FBF9F4;
-  --paper-2: #F3EFE6;
-  --ink:     #1A1714;
-  --ink-2:   #4A443C;
-  --ink-3:   #7C7367;
-  --rule:    #D9D2C4;
-  --rule-2:  #C2B9A6;
-  --accent:  #8C2F1E;   /* oxblood — stamp/ink, not a brand gradient */
-  --good:    #2F5D3A;
+  /* ground */
+  --ground:#F6F3EC;   /* warm paper. the page. */
+  --surface:#FFFFFF;  /* masthead */
+  --hair:#E3DDD1;     /* hairline: rows, cells, dividers */
+  --strong:#C9C1B2;   /* strong rule: section rules, marks */
 
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
-  --sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --mono:  ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  /* ink — --ink-3 (#8B8578, 3.31:1) is deliberately NOT declared here.
+     Every secondary string on this page is small, so secondary ink is
+     --ink-2 at 6.07:1 on --ground. */
+  --ink:#1B1A17;
+  --ink-2:#5E5A52;
+
+  --verdict:#B8412F;  /* disputed/wrong notes only */
+  --brass:#9C7A3C;    /* the benchmark plate stroke. a mark colour, never text. */
+
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --serif:"Instrument Serif","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+
+  caret-color:var(--ink); accent-color:var(--ink); color-scheme:light;
 }
 
 *,*::before,*::after{ box-sizing:border-box; }
 html{ -webkit-text-size-adjust:100%; }
 body{
   margin:0;
-  background:var(--paper);
+  background:var(--ground);
   color:var(--ink);
-  font-family:var(--serif);
-  font-size:19px;
-  line-height:1.62;
+  font:400 15px/1.62 var(--sans);
+  font-variant-numeric:tabular-nums;
 }
+::selection{ background:#E8DCBE; color:var(--ink); }
+:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
 
-.wrap{ max-width:760px; margin:0 auto; padding:0 24px; }
+.wrap{ max-width:720px; margin:0 auto; padding:0 24px; }
 
-a{ color:var(--accent); }
+a{ color:var(--ink); text-underline-offset:3px; text-decoration-thickness:1px; }
 a:hover{ text-decoration-thickness:2px; }
 
 /* ---------- masthead ---------- */
-.top{
-  border-bottom:2px solid var(--ink);
-  background:var(--paper-2);
-}
+.top{ border-bottom:1px solid var(--strong); background:var(--surface); }
 .top-in{
-  max-width:760px; margin:0 auto; padding:18px 24px;
-  display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  max-width:720px; margin:0 auto; padding:16px 24px;
+  display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap;
 }
-.biz{ font-size:22px; font-weight:700; letter-spacing:.01em; }
-.top-meta{
-  font-family:var(--mono); font-size:14px; letter-spacing:.08em;
-  text-transform:uppercase; color:var(--ink-3);
-}
+.biz{ font:600 18px/1.2 var(--sans); letter-spacing:.01em; min-width:0; }
+.top-meta{ font:400 13px/1.4 var(--sans); color:var(--ink-2); min-width:0; }
 
-/* ---------- headline ---------- */
-header.lede{ padding:44px 0 8px; }
-.kicker{
-  font-family:var(--mono); font-size:14px; letter-spacing:.16em;
-  text-transform:uppercase; color:var(--accent); margin-bottom:14px;
-}
+/* ---------- headline. No kicker above it — DESIGN.md §10. ---------- */
+header.lede{ padding:40px 0 4px; }
 h1{
-  font-size:clamp(32px, 5.2vw, 47px);
-  line-height:1.14; margin:0 0 22px;
-  font-weight:700; letter-spacing:-.012em;
-  text-wrap:balance;
+  font:400 40px/1.1 var(--serif);
+  margin:0 0 20px; letter-spacing:-.01em; text-wrap:balance;
 }
-/* answer-first: 40–80 words, the whole point of the page.
-   Emphasis comes from type scale alone — no accent bar. A colored side border
-   on the lead paragraph reads as a blog pull-quote, and this page has to pass
-   as the business's own site, not a generated one. */
-.answer{
-  font-size:22px; line-height:1.56; margin:0 0 10px;
-}
-.answer strong{ font-weight:700; }
+@media (min-width:720px){ h1{ font-size:clamp(40px, 5vw, 52px); } }
 
-.byline{
-  font-family:var(--mono); font-size:14px; color:var(--ink-3);
-  letter-spacing:.04em; padding:14px 0 0;
-}
+/* answer-first: 40–80 words, the whole point of the page. Emphasis is type
+   scale alone — a coloured side rule would read as a blog pull-quote, and
+   this page has to pass as a real business's page. */
+.answer{ font-size:18px; line-height:1.55; margin:0 0 4px; }
 
-hr.rule{ border:0; border-top:1px solid var(--rule); margin:40px 0; }
+.byline{ font-size:13px; color:var(--ink-2); padding:14px 0 0; margin:0; }
 
-h2{
-  font-size:27px; line-height:1.24; margin:0 0 6px;
-  font-weight:700; letter-spacing:-.008em;
-}
-h2 + .sub{
-  font-family:var(--mono); font-size:14px; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--ink-3); margin:0 0 20px;
-}
-h3{ font-size:21px; margin:26px 0 6px; font-weight:700; }
+hr.rule{ border:0; border-top:1px solid var(--strong); margin:36px 0; }
+
+h2{ font:600 24px/1.25 var(--sans); margin:0 0 4px; letter-spacing:-.005em; }
+h2 + .sub{ font-size:13px; color:var(--ink-2); margin:0 0 20px; }
 p{ margin:0 0 18px; }
 
-/* ---------- visible fact block (NOT schema-only) ---------- */
-.facts{
-  border:1px solid var(--rule-2); background:#fff;
-  padding:4px 22px; margin:0 0 26px;
-}
+/* ---------- visible fact block: hairlines, no box ---------- */
+.facts{ margin:0 0 8px; border-top:1px solid var(--hair); }
 .facts dl{ margin:0; }
 .facts .row{
-  display:grid; grid-template-columns:172px 1fr; gap:18px;
-  padding:14px 0; border-bottom:1px solid var(--rule);
+  display:grid; grid-template-columns:150px minmax(0,1fr); gap:18px;
+  padding:13px 0; border-bottom:1px solid var(--hair);
 }
 .facts .row:last-child{ border-bottom:0; }
-@media (max-width:560px){ .facts .row{ grid-template-columns:1fr; gap:2px; } }
 .facts dt{
-  font-family:var(--mono); font-size:14px; letter-spacing:.13em;
-  text-transform:uppercase; color:var(--ink-3); padding-top:4px;
+  font:400 13px/1.5 var(--sans); letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-2); min-width:0;
 }
-.facts dd{ margin:0; font-size:19px; }
-.facts dd .note{ display:block; font-size:16px; color:var(--ink-3); margin-top:3px; }
+.facts dd{ margin:0; font:400 15px/1.5 var(--mono); overflow-wrap:anywhere; min-width:0; }
+.note{ font:400 13px/1.5 var(--sans); color:var(--ink-2); overflow-wrap:break-word; }
+.note.disputed{ color:var(--ink-2); } /* disputed means uncertain; red is reserved for wrong */
+.facts dd .note{ display:block; margin-top:5px; }
+p.note{ margin:16px 0 0; }
+@media (max-width:560px){ .facts .row{ grid-template-columns:minmax(0,1fr); gap:3px; } }
 
 /* hours as a real visible table, one line per day */
-table.hours{ width:100%; border-collapse:collapse; font-size:19px; }
+table.hours{ width:100%; border-collapse:collapse; table-layout:fixed; }
 table.hours th{
-  text-align:left; font-family:var(--mono); font-size:14px; letter-spacing:.13em;
-  text-transform:uppercase; color:var(--ink-3); font-weight:400;
-  padding:9px 0; width:150px; vertical-align:top;
+  text-align:left; font:400 13px/1.5 var(--sans); letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-2);
+  padding:11px 12px 11px 0; width:150px; vertical-align:top;
+  border-bottom:1px solid var(--hair);
 }
-table.hours td{ padding:9px 0; border-bottom:1px solid var(--rule); }
-table.hours th{ border-bottom:1px solid var(--rule); }
-table.hours tr:last-child th, table.hours tr:last-child td{ border-bottom:0; }
-table.hours .closed{ color:var(--ink-3); }
+table.hours td{
+  padding:11px 0; border-bottom:1px solid var(--hair);
+  font:400 15px/1.5 var(--mono); overflow-wrap:anywhere;
+}
+@media (max-width:420px){ table.hours th{ width:112px; letter-spacing:.06em; } }
 
 ul.services{ margin:0 0 18px; padding:0; list-style:none; }
 ul.services li{
-  padding:11px 0 11px 26px; border-bottom:1px solid var(--rule);
-  position:relative; font-size:19px;
+  padding:12px 0 12px 22px; border-bottom:1px solid var(--hair);
+  position:relative; overflow-wrap:break-word;
 }
-ul.services li:last-child{ border-bottom:0; }
 ul.services li::before{
-  content:""; position:absolute; left:2px; top:20px;
-  width:9px; height:9px; border:1px solid var(--accent);
+  content:""; position:absolute; left:1px; top:20px;
+  width:8px; height:8px; border:1px solid var(--strong);
 }
-ul.services li b{ font-weight:700; }
+ul.services li b{ font-weight:600; }
 ul.services li span{ color:var(--ink-2); }
 
-/* ---------- comparison: what makes this an answer page ---------- */
-table.compare{ width:100%; border-collapse:collapse; font-size:18px; margin-bottom:8px; }
-table.compare caption{
-  caption-side:top; text-align:left; font-family:var(--mono);
-  font-size:14px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--ink-3); padding-bottom:12px;
-}
+/* ---------- comparison: rendered ONLY with >=2 verified alternatives ---------- */
+table.compare{ width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:10px; }
 table.compare th{
-  text-align:left; font-family:var(--mono); font-size:14px; letter-spacing:.11em;
-  text-transform:uppercase; color:var(--ink-3); font-weight:400;
-  padding:0 14px 10px 0; border-bottom:2px solid var(--ink);
+  text-align:left; font:400 13px/1.4 var(--sans); letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-2);
+  padding:0 12px 10px 0; border-bottom:1px solid var(--strong);
 }
-table.compare td{ padding:14px 14px 14px 0; border-bottom:1px solid var(--rule); vertical-align:top; }
-table.compare tr.self td{ background:#FFFBEF; font-weight:700; }
-table.compare tr.self td:first-child::after{
-  content:" ← this page"; font-family:var(--mono); font-size:13px;
-  letter-spacing:.1em; color:var(--accent); font-weight:400; white-space:nowrap;
+table.compare td{
+  padding:13px 12px 13px 0; border-bottom:1px solid var(--hair);
+  vertical-align:top; overflow-wrap:break-word;
 }
+table.compare tr.self td{ font-weight:600; }
 
-/* ---------- FAQ: answers the audit's probe questions ---------- */
-.faq{ border-top:1px solid var(--rule); }
-.faq .q{
-  padding:22px 0 0; font-size:21px; font-weight:700; line-height:1.34;
-}
-.faq .a{ padding:8px 0 22px; border-bottom:1px solid var(--rule); margin:0; }
-.faq .a:last-child{ border-bottom:0; }
+/* ---------- FAQ ---------- */
+.faq{ border-top:1px solid var(--hair); }
+.faq .q{ padding:20px 0 0; font:600 18px/1.35 var(--sans); }
+.faq .a{ padding:7px 0 20px; border-bottom:1px solid var(--hair); margin:0; }
 
-/* ---------- verification stamp ---------- */
+/* ---------- verification stamp: the benchmark plate ---------- */
 .verified{
-  margin:40px 0 0; border:1px solid var(--rule-2); background:var(--paper-2);
-  padding:20px 22px;
+  margin:40px 0 0; padding:22px 0;
+  border-top:1px solid var(--strong); border-bottom:1px solid var(--strong);
+  display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap;
 }
+.plate{ width:222px; height:47px; color:var(--brass); display:block; flex:0 0 auto; }
+.plate text{ font-family:var(--mono); fill:var(--ink-2); }
+.plate .t-engine{ fill:var(--ink); font-size:11px; letter-spacing:.02em; }
+.plate .t-meta{ font-size:8.5px; letter-spacing:.02em; }
+.verified .body{ min-width:0; flex:1 1 300px; }
 .verified .h{
-  font-family:var(--mono); font-size:14px; letter-spacing:.16em;
-  text-transform:uppercase; color:var(--ink-3); margin-bottom:8px;
+  font:400 13px/1.5 var(--sans); letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-2);
 }
-.verified .when{ font-size:21px; font-weight:700; }
-.verified .src{ font-size:16px; color:var(--ink-2); margin-top:8px; }
+.verified .when{ font:400 18px/1.4 var(--mono); margin-top:2px; overflow-wrap:anywhere; }
+.verified .src{ font-size:13px; color:var(--ink-2); margin-top:8px; }
 
+/* No rule here: the verification stamp already closes on one. */
 footer{
-  margin-top:48px; border-top:2px solid var(--ink); padding:22px 0 60px;
-  font-family:var(--sans); font-size:15px; color:var(--ink-3); line-height:1.6;
+  margin-top:0; padding:20px 0 56px;
+  font-size:13px; color:var(--ink-2); line-height:1.6;
 }
 footer a{ color:var(--ink-2); }
 footer .disclose{ margin-top:10px; }
 
 @media print{ body{ background:#fff; } .top{ background:#fff; } }
+@media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
@@ -225,236 +224,53 @@ footer .disclose{ margin-top:10px; }
 <div class="top">
   <div class="top-in">
     <span class="biz">{{BUSINESS_NAME}}</span>
-    <span class="top-meta">{{CATEGORY}} &middot; {{NEIGHBORHOOD}}, {{CITY}}</span>
+    <span class="top-meta">{{MASTHEAD_META}}</span>
   </div>
 </div>
 
-<div class="wrap">
+<main class="wrap">
 
   <!-- ==================== THE QUESTION IT IS LOSING ==================== -->
   <header class="lede">
-    <div class="kicker">{{NEIGHBORHOOD}} &middot; {{CITY}} &middot; Updated {{LAST_VERIFIED_SHORT}}</div>
-
     <h1>{{H1_QUESTION}}</h1>
 
     <!-- ANSWER-FIRST. 40–80 words. Name the business in the first sentence,
-         then the single most decisive reason, then the qualifier that makes
-         it honest. Do not open with a preamble. -->
+         then the single most decisive reason, then the honest qualifier. -->
     <p class="answer">{{ANSWER_PARAGRAPH}}</p>
 
-    <p class="byline">By {{AUTHOR_LINE}} &middot; Reviewed against {{SOURCE_COUNT}} primary sources &middot; {{LAST_VERIFIED}}</p>
+    <p class="byline">{{BYLINE}}</p>
   </header>
 
   <hr class="rule">
 
-  <!-- ==================== VISIBLE FACTS (never schema-only) ==================== -->
-  <section>
-    <h2>{{BUSINESS_NAME}} at a glance</h2>
-    <p class="sub">Every fact on this page is readable text</p>
-
-    <div class="facts">
-      <dl>
-        <div class="row">
-          <dt>Address</dt>
-          <dd>{{STREET_ADDRESS}}, {{LOCALITY}}, {{REGION}} {{POSTAL_CODE}}
-            <span class="note">{{ADDRESS_NOTE}}</span></dd>
-        </div>
-        <div class="row">
-          <dt>Phone</dt>
-          <dd><a href="tel:{{PHONE_TEL}}">{{PHONE}}</a>
-            <span class="note">{{PHONE_NOTE}}</span></dd>
-        </div>
-        <div class="row">
-          <dt>Website</dt>
-          <dd><a href="{{WEBSITE_URL}}" rel="noopener">{{WEBSITE_LABEL}}</a></dd>
-        </div>
-        <div class="row">
-          <dt>Price range</dt>
-          <dd>{{PRICE_RANGE}} <span class="note">{{PRICE_NOTE}}</span></dd>
-        </div>
-        <div class="row">
-          <dt>Rating</dt>
-          <dd>{{RATING}} out of 5, from {{REVIEW_COUNT}} reviews
-            <span class="note">Source: {{RATING_SOURCE}}, read {{RATING_READ_ON}}</span></dd>
-        </div>
-        <div class="row">
-          <dt>Getting there</dt>
-          <dd>{{TRANSIT_NOTE}}</dd>
-        </div>
-      </dl>
-    </div>
-  </section>
-
-  <!-- ==================== HOURS, AS TEXT ==================== -->
-  <section>
-    <h2>Opening hours</h2>
-    <p class="sub">Written out per day — this is the fact AI gets wrong most often</p>
-
-    <table class="hours">
-      <tbody>
-        <tr><th scope="row">Monday</th>    <td>{{HOURS_MON}}</td></tr>
-        <tr><th scope="row">Tuesday</th>   <td>{{HOURS_TUE}}</td></tr>
-        <tr><th scope="row">Wednesday</th> <td>{{HOURS_WED}}</td></tr>
-        <tr><th scope="row">Thursday</th>  <td>{{HOURS_THU}}</td></tr>
-        <tr><th scope="row">Friday</th>    <td>{{HOURS_FRI}}</td></tr>
-        <tr><th scope="row">Saturday</th>  <td>{{HOURS_SAT}}</td></tr>
-        <tr><th scope="row">Sunday</th>    <td>{{HOURS_SUN}}</td></tr>
-      </tbody>
-    </table>
-
-    <p style="margin-top:18px">{{HOURS_EXCEPTIONS}}</p>
-  </section>
-
-  <!-- ==================== SERVICES, AS TEXT ==================== -->
-  <section>
-    <h2>What {{BUSINESS_NAME}} actually offers</h2>
-    <p class="sub">Stated plainly so it can be quoted</p>
-
-    <ul class="services">
-      <li><b>{{SERVICE_1}}</b> — <span>{{SERVICE_1_DETAIL}}</span></li>
-      <li><b>{{SERVICE_2}}</b> — <span>{{SERVICE_2_DETAIL}}</span></li>
-      <li><b>{{SERVICE_3}}</b> — <span>{{SERVICE_3_DETAIL}}</span></li>
-      <li><b>{{SERVICE_4}}</b> — <span>{{SERVICE_4_DETAIL}}</span></li>
-      <li><b>{{SERVICE_5}}</b> — <span>{{SERVICE_5_DETAIL}}</span></li>
-    </ul>
-
-    <p>{{SERVICES_CAVEAT}}</p>
-  </section>
-
-  <hr class="rule">
-
-  <!-- ==================== THE COMPARISON — why this is an answer page ==================== -->
-  <section>
-    <h2>Other {{CATEGORY_PLURAL}} in {{NEIGHBORHOOD}}, compared</h2>
-    <p class="sub">Honestly labeled &middot; we are not the right answer for every question</p>
-
-    <table class="compare">
-      <caption>{{COMPARE_CAPTION}}</caption>
-      <thead>
-        <tr><th style="width:30%">Place</th><th style="width:34%">Best for</th><th style="width:22%">Price</th><th style="width:14%">Wait</th></tr>
-      </thead>
-      <tbody>
-        <tr class="self">
-          <td>{{BUSINESS_NAME}}</td><td>{{SELF_BEST_FOR}}</td><td>{{SELF_PRICE}}</td><td>{{SELF_WAIT}}</td>
-        </tr>
-        <tr><td>{{ALT_1_NAME}}</td><td>{{ALT_1_BEST_FOR}}</td><td>{{ALT_1_PRICE}}</td><td>{{ALT_1_WAIT}}</td></tr>
-        <tr><td>{{ALT_2_NAME}}</td><td>{{ALT_2_BEST_FOR}}</td><td>{{ALT_2_PRICE}}</td><td>{{ALT_2_WAIT}}</td></tr>
-        <tr><td>{{ALT_3_NAME}}</td><td>{{ALT_3_BEST_FOR}}</td><td>{{ALT_3_PRICE}}</td><td>{{ALT_3_WAIT}}</td></tr>
-        <tr><td>{{ALT_4_NAME}}</td><td>{{ALT_4_BEST_FOR}}</td><td>{{ALT_4_PRICE}}</td><td>{{ALT_4_WAIT}}</td></tr>
-      </tbody>
-    </table>
-
-    <p style="font-size:16px;color:var(--ink-2)">{{COMPARE_METHOD}}</p>
-  </section>
-
-  <hr class="rule">
-
-  <!-- ==================== FAQ — answers the audit's probe questions ==================== -->
-  <section>
-    <h2>Questions people ask about {{BUSINESS_NAME}}</h2>
-    <p class="sub">These are the exact probes the audit found unanswered</p>
-
-    <div class="faq">
-      <div class="q">{{FAQ_1_Q}}</div>
-      <p class="a">{{FAQ_1_A}}</p>
-
-      <div class="q">{{FAQ_2_Q}}</div>
-      <p class="a">{{FAQ_2_A}}</p>
-
-      <div class="q">{{FAQ_3_Q}}</div>
-      <p class="a">{{FAQ_3_A}}</p>
-
-      <div class="q">{{FAQ_4_Q}}</div>
-      <p class="a">{{FAQ_4_A}}</p>
-
-      <div class="q">{{FAQ_5_Q}}</div>
-      <p class="a">{{FAQ_5_A}}</p>
-
-      <div class="q">{{FAQ_6_Q}}</div>
-      <p class="a">{{FAQ_6_A}}</p>
-    </div>
-  </section>
-
-  <!-- ==================== VERIFICATION STAMP ==================== -->
-  <div class="verified">
-    <div class="h">Last verified</div>
-    <div class="when">{{LAST_VERIFIED}}</div>
-    <div class="src">
-      Checked against {{VERIFIED_SOURCES}}.
-      Re-verified on a {{VERIFY_CADENCE}} cadence.
-    </div>
-  </div>
+  {{FACTS_SECTION}}
+  {{HOURS_SECTION}}
+  {{SERVICES_SECTION}}
+  {{COMPARISON_SECTION}}
+  {{FAQ_SECTION}}
+  {{VERIFICATION_SECTION}}
 
   <footer>
-    <div>{{BUSINESS_NAME}} &middot; {{STREET_ADDRESS}}, {{LOCALITY}}, {{REGION}} {{POSTAL_CODE}} &middot; <a href="tel:{{PHONE_TEL}}">{{PHONE}}</a></div>
+    {{FOOTER_CONTACT}}
     <div class="disclose">
       Published and maintained by <a href="https://usevouch.dev" rel="noopener">Vouch</a> on behalf of {{BUSINESS_NAME}}.
-      Facts on this page are drawn from the business and from public listings, and are dated above.
+      Facts on this page are drawn from public listings and are dated above.
       We measure what AI assistants say about this business; we make no claim about what they will say next.
     </div>
   </footer>
 
-</div>
+</main>
 
 <!--
   ============================================================
-  JSON-LD — SUPPLEMENT ONLY.
-  Every value below is ALREADY present as visible text above.
-  Measured: 0 of 5 AI systems extracted a fact that existed only
-  here. If a fact is not in the prose, it does not count as shipped.
+  JSON-LD — SUPPLEMENT ONLY, and built in code.
+  The object is assembled in builder.ts and serialised with
+  JSON.stringify, so it cannot ship a malformed node, an empty
+  priceRange, an empty geo, or an empty telephone. Every value
+  below is ALREADY present as visible text above.
   ============================================================
 -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "LocalBusiness",
-  "@id": "https://{{SLUG}}.usevouch.dev/#business",
-  "name": "{{BUSINESS_NAME}}",
-  "description": "{{META_DESCRIPTION}}",
-  "url": "{{WEBSITE_URL}}",
-  "telephone": "{{PHONE}}",
-  "priceRange": "{{PRICE_RANGE}}",
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": "{{STREET_ADDRESS}}",
-    "addressLocality": "{{LOCALITY}}",
-    "addressRegion": "{{REGION}}",
-    "postalCode": "{{POSTAL_CODE}}",
-    "addressCountry": "US"
-  },
-  "geo": { "@type": "GeoCoordinates", "latitude": "{{LAT}}", "longitude": "{{LNG}}" },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "{{RATING}}",
-    "reviewCount": "{{REVIEW_COUNT}}"
-  },
-  "openingHoursSpecification": [
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Monday","opens":"{{OPEN_MON}}","closes":"{{CLOSE_MON}}" },
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Tuesday","opens":"{{OPEN_TUE}}","closes":"{{CLOSE_TUE}}" },
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Wednesday","opens":"{{OPEN_WED}}","closes":"{{CLOSE_WED}}" },
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Thursday","opens":"{{OPEN_THU}}","closes":"{{CLOSE_THU}}" },
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Friday","opens":"{{OPEN_FRI}}","closes":"{{CLOSE_FRI}}" },
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Saturday","opens":"{{OPEN_SAT}}","closes":"{{CLOSE_SAT}}" },
-    { "@type":"OpeningHoursSpecification","dayOfWeek":"Sunday","opens":"{{OPEN_SUN}}","closes":"{{CLOSE_SUN}}" }
-  ]
-}
-</script>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "@id": "https://{{SLUG}}.usevouch.dev/#faq",
-  "mainEntity": [
-    { "@type":"Question","name":"{{FAQ_1_Q}}","acceptedAnswer":{"@type":"Answer","text":"{{FAQ_1_A}}"} },
-    { "@type":"Question","name":"{{FAQ_2_Q}}","acceptedAnswer":{"@type":"Answer","text":"{{FAQ_2_A}}"} },
-    { "@type":"Question","name":"{{FAQ_3_Q}}","acceptedAnswer":{"@type":"Answer","text":"{{FAQ_3_A}}"} },
-    { "@type":"Question","name":"{{FAQ_4_Q}}","acceptedAnswer":{"@type":"Answer","text":"{{FAQ_4_A}}"} },
-    { "@type":"Question","name":"{{FAQ_5_Q}}","acceptedAnswer":{"@type":"Answer","text":"{{FAQ_5_A}}"} },
-    { "@type":"Question","name":"{{FAQ_6_Q}}","acceptedAnswer":{"@type":"Answer","text":"{{FAQ_6_A}}"} }
-  ]
-}
-</script>
+{{JSON_LD}}
 
 </body>
 </html>

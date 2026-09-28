@@ -115,7 +115,11 @@ function buildHtml(input: OutreachInput): string {
   if (pay) {
     parts.push(`<p><a href="${escapeHtml(pay)}">Start monitoring — $39/month</a></p>`);
   }
-  parts.push(`<p>— Vouch</p>`);
+  // The benchmark plate is the mark on every surface (DESIGN.md §1). Served
+  // from our own zone; the email carries no inline data.
+  parts.push(
+    `<p style="margin-top:24px"><img src="https://usevouch.dev/assets/plate-128.png" width="64" height="40" alt="Vouch benchmark plate" style="display:block;margin-bottom:6px">— Vouch</p>`,
+  );
   return `<!doctype html><html><body>${parts.join('')}</body></html>`;
 }
 

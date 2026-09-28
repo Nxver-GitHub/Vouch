@@ -3,559 +3,439 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vouch — Instrument</title>
+<title>Vouch Survey Office</title>
 <meta name="description" content="Operator console. Customers ask AI what's good nearby. We grade the answers.">
+<link rel="icon" type="image/png" href="/assets/plate-64.png">
+<link rel="apple-touch-icon" href="/assets/plate-128.png">
+<meta property="og:title" content="Vouch">
+<meta property="og:description" content="Customers ask AI what's good nearby. We grade the answers.">
+<meta property="og:image" content="https://usevouch.dev/assets/og-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;600&family=Instrument+Serif&display=swap">
 <style>
-/* ============================================================
-   VOUCH — OPERATOR INSTRUMENT
-   Dark bench console. Projector-legible. No external assets.
-   Nothing below 16px. Mono-dominant, no decorative emoji.
-   ============================================================ */
-
+/* ===========================================================================
+   VOUCH — THE SURVEY OFFICE, DAYLIGHT EDITION
+   Warm paper ground. Surfaces sit on hairlines, never on shadows.
+   Two visual channels, never merged. LIGHT = cited by an engine.
+   PLATE = paid / monitoring. Payment never changes lighting.
+   =========================================================================== */
 :root{
-  --bg:        #07090A;
-  --panel:     #0E1315;
-  --panel-2:   #121A1D;
-  --rule:      #1D272B;
-  --rule-hot:  #2A3A40;
-
-  --ink:       #E8F0F2;
-  --ink-2:     #9FB2B7;
-  --ink-3:     #63777C;
-
-  --signal:    #2DE0A5;   /* done / shared / good */
-  --amber:     #FFB020;   /* working / attention */
-  --alert:     #FF5C4D;   /* wrong fact / fail grade */
-  --cool:      #5BB9FF;   /* links / deployed */
-
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "DejaVu Sans Mono", Consolas, monospace;
-
-  --gutter: 28px;
+  --ground:#F6F3EC; --surface:#FFFFFF; --hair:#E3DDD1; --strong:#C9C1B2;
+  --well:#EFEAE0;
+  --ink:#1B1A17; --ink-2:#5E5A52; --ink-3:#8B8578;   /* ink-3: >=18px or marks only */
+  --datum:#D98E1F;      /* lit. cited by an engine. the only warm hue. */
+  --verdict:#B8412F;    /* wrong facts and failed states only */
+  --measured:#2F7A5A;   /* correct / done */
+  --brass:#9C7A3C;      /* paid / monitoring. a mark colour, not a text colour. */
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --serif:"Instrument Serif",Iowan Old Style,"Palatino Linotype",Georgia,serif;
+  --gut:32px; --max:1180px;
+  accent-color:var(--ink); caret-color:var(--ink);
+  color-scheme:light;
 }
-
-*,*::before,*::after{ box-sizing:border-box; }
-
-html,body{ margin:0; padding:0; }
-
+*,*::before,*::after{box-sizing:border-box;}
+::selection{background:#E8DCBE;color:var(--ink);}
+html{-webkit-text-size-adjust:100%;}
 body{
-  background:var(--bg);
-  color:var(--ink);
-  font-family:var(--mono);
-  font-size:17px;
-  line-height:1.45;
-  -webkit-font-smoothing:antialiased;
-  padding:0 0 64px;
+  margin:0; background:var(--ground); color:var(--ink);
+  font:400 15px/1.5 var(--sans); font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased; padding-bottom:56px;
 }
+h1,h2,h3,p,ul,figure{margin:0;}
+.wrap{max-width:var(--max); margin:0 auto; padding:0 var(--gut);}
+.mono{font-family:var(--mono); font-size:13px; overflow-wrap:anywhere;}
+a{color:var(--ink); text-underline-offset:3px; text-decoration-thickness:1px;}
+a:hover{text-decoration-color:var(--strong);}
+:focus-visible{outline:2px solid var(--ink); outline-offset:2px;}
 
-.wrap{ max-width:1520px; margin:0 auto; padding:0 var(--gutter); }
-
-/* ---------- micro label: tracked caps, never below 16px ---------- */
-.lbl{
-  font-size:16px;
-  letter-spacing:.20em;
-  text-transform:uppercase;
-  color:var(--ink-3);
-  font-weight:500;
+/* ---- section headings: a word on a rule. no kickers anywhere on this page ---- */
+.sec{padding-top:34px;}
+.sec > h2{
+  font:600 15px/1 var(--sans); letter-spacing:.01em;
+  padding-bottom:9px; border-bottom:1px solid var(--strong); margin-bottom:18px;
+  display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap;
 }
+.sec > h2 .aside{font-weight:400; font-size:13px; color:var(--ink-2);}
 
-/* ================= MASTHEAD ================= */
-header.mast{
-  border-bottom:1px solid var(--rule);
-  background:linear-gradient(180deg,#0A0E10,#07090A);
-  position:sticky; top:0; z-index:40;
-}
+/* =============================== MASTHEAD =============================== */
+.mast{border-bottom:1px solid var(--strong); background:var(--surface);}
 .mast-in{
-  display:flex; align-items:center; gap:24px;
-  padding:18px var(--gutter);
-  max-width:1520px; margin:0 auto;
+  max-width:var(--max); margin:0 auto; padding:20px var(--gut);
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:22px;
 }
-.mark{
-  display:flex; align-items:baseline; gap:12px;
+.ident{display:flex; align-items:baseline; gap:10px; min-width:0;}
+.datum{width:18px; height:18px; color:var(--brass); flex:0 0 auto; align-self:center;}
+.wordmark{font:400 30px/1 var(--serif); color:var(--ink); letter-spacing:-.01em;}
+.word{font:600 18px/1 var(--sans); letter-spacing:.02em;}
+.claim{
+  margin:0; font:400 15px/1.4 var(--sans); color:var(--ink-2); min-width:0; text-wrap:balance;
 }
-.mark b{
-  font-size:26px; font-weight:700; letter-spacing:.34em;
-  color:var(--ink);
+.runstat{
+  display:none; align-items:baseline; gap:14px; white-space:nowrap;
+  font-size:13px; color:var(--ink-2);
 }
-.mark span{
-  font-size:16px; color:var(--ink-3); letter-spacing:.06em;
-}
-.tag{
-  flex:1; min-width:0;
-  font-size:16px; color:var(--ink-2);
-  border-left:1px solid var(--rule); padding-left:24px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.runid{
-  display:flex; align-items:center; gap:12px;
-  font-size:16px; color:var(--ink-2);
-}
-.led{
-  width:11px; height:11px; border-radius:50%;
-  background:var(--ink-3); box-shadow:0 0 0 0 rgba(0,0,0,0);
-}
-.led.live{ background:var(--amber); animation:pulse 1.1s ease-in-out infinite; }
-.led.done{ background:var(--signal); }
-@keyframes pulse{
-  0%,100%{ box-shadow:0 0 0 0 rgba(255,176,32,.55); }
-  55%    { box-shadow:0 0 0 9px rgba(255,176,32,0); }
-}
+.runstat[data-on="1"]{display:flex;}
+.runstat .biz{color:var(--ink); font-weight:600; font-size:15px; max-width:22ch; overflow:hidden; text-overflow:ellipsis;}
+.runstat .el{font-family:var(--mono);}
+.runstat .word{display:flex; align-items:center; gap:7px; font:400 13px/1 var(--sans);}
+.dot{width:8px; height:8px; border:1px solid var(--strong); flex:0 0 auto;}
+.dot[data-s="running"]{background:var(--ink); border-color:var(--ink);}
+.dot[data-s="complete"]{background:var(--measured); border-color:var(--measured);}
+.dot[data-s="failed"]{background:var(--verdict); border-color:var(--verdict);}
+.dot[data-s="awaiting"]{background:var(--surface); border-color:var(--ink);}
 
-/* ================= CONTROL BAR ================= */
-.control{
-  display:flex; gap:14px; align-items:stretch; flex-wrap:wrap;
-  padding:22px 0 26px;
-  border-bottom:1px solid var(--rule);
-}
-.field{
-  position:relative; flex:1 1 300px; min-width:240px;
-  border:1px solid var(--rule); background:var(--panel);
-}
-.field:focus-within{ border-color:var(--rule-hot); background:var(--panel-2); }
-.field .lbl{
-  position:absolute; top:9px; left:16px; font-size:16px; letter-spacing:.20em;
-  pointer-events:none;
-}
-.field input{
-  width:100%; border:0; background:transparent; outline:0;
-  color:var(--ink); font-family:var(--mono); font-size:22px;
-  padding:34px 16px 14px;
-}
-.field input::placeholder{ color:#3E4E53; }
+/* ================================= HERO ================================= */
+/* The block stands on the paper ground: no border, no shadow, no card. It is
+   present in every state and it never animates — a run does not move it. */
+.hero{display:block; margin:26px 0 0;}
+.hero img{display:block; width:100%; height:auto; border:0;}
 
-button.run{
-  flex:0 0 auto;
-  border:1px solid var(--signal);
-  background:#0B1A16;
-  color:var(--signal);
-  font-family:var(--mono); font-size:22px; font-weight:700;
-  letter-spacing:.26em; text-transform:uppercase;
-  padding:0 46px; cursor:pointer;
-  transition:background .12s linear, color .12s linear;
+/* =============================== CONTROLS =============================== */
+.controls{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; padding-top:26px;}
+.f{flex:1 1 210px; min-width:0; display:flex; flex-direction:column; gap:6px;}
+.f > span{font-size:13px; color:var(--ink-2);}
+.f input{
+  width:100%; font:400 15px/1 var(--sans); color:var(--ink);
+  background:var(--surface); border:1px solid var(--strong); border-radius:0;
+  padding:11px 12px; min-width:0;
 }
-button.run:hover{ background:var(--signal); color:#04120D; }
-button.run:active{ transform:translateY(1px); }
-button.run[disabled]{ opacity:.35; cursor:not-allowed; }
-button.ghost{
-  flex:0 0 auto; border:1px solid var(--rule); background:transparent;
-  color:var(--ink-2); font-family:var(--mono); font-size:17px;
-  letter-spacing:.14em; text-transform:uppercase; padding:0 22px; cursor:pointer;
+.f input::placeholder{color:var(--ink-3);}
+.f input:focus-visible{border-color:var(--ink);}
+.btn{
+  font:450 15px/1 var(--sans); padding:12px 26px; border-radius:0; cursor:pointer;
+  border:1px solid var(--ink); background:var(--ink); color:var(--ground);
 }
-button.ghost:hover{ border-color:var(--rule-hot); color:var(--ink); }
+.btn:hover{background:#000;}
+.btn[disabled]{background:var(--ground); color:var(--ink-3); border-color:var(--strong); cursor:not-allowed;}
+.btn.sub{background:transparent; color:var(--ink); border-color:var(--strong);}
+.btn.sub:hover{border-color:var(--ink); background:var(--surface);}
 
-/* ================= LAYOUT ================= */
-.grid{
-  display:grid;
-  grid-template-columns: 1fr 1.32fr;
-  gap:22px;
-  padding-top:22px;
+/* ================================ STREET ================================ */
+.well{
+  background:var(--well); border:1px solid var(--hair);
+  box-shadow:inset 0 2px 5px rgba(27,26,23,.09), inset 0 -1px 0 rgba(255,255,255,.6);
+  padding:22px 0 0; overflow-x:auto; overflow-y:hidden;
+  scrollbar-width:thin; scrollbar-color:var(--strong) transparent;
 }
-@media (max-width:1180px){ .grid{ grid-template-columns:1fr; } }
+.well::-webkit-scrollbar{height:10px;}
+.well::-webkit-scrollbar-track{background:transparent;}
+.well::-webkit-scrollbar-thumb{background:var(--strong);}
+.row{
+  position:relative; display:flex; align-items:flex-start; gap:20px;
+  padding:0 22px 20px; width:max-content; min-width:100%;
+}
+/* the pavement sits under the shopfronts, at the sprite baseline, not as a
+   bar across the foot of the panel. Sprites are 180px tall here; the stone
+   edge in street-day.png falls at 25% of the tile, so at top:146px it meets
+   the sprite foundations, which end at 156px. */
+.row.paved::before{
+  content:""; position:absolute; left:0; right:0; top:146px; height:50px; z-index:0;
+  background-image:url("/assets/street-day.png");
+  background-image:image-set(url("/assets/street-day.png") 1x, url("/assets/street-day@2x.png") 2x);
+  background-repeat:repeat-x; background-position:left bottom; background-size:200px 50px;
+}
+.row .none{font-size:15px; color:var(--ink-2); padding:34px 0 46px;}
+.lot{width:120px; flex:0 0 auto; position:relative; z-index:1;}
+.shopfront{position:relative; height:180px;}
+.shopfront img.sprite{display:block; width:120px; height:180px;}
+/* A-board on the pavement to the RIGHT of the door, inside the well: at left:-30px the first shop's sign was clipped by the well edge. */
+.shopfront .sign{position:absolute; right:-14px; bottom:2px; width:38px; height:48px;}
+/* the benchmark plate, mounted on the facade beside the door. It carries its
+   own rendered shadow, so it takes no CSS shadow and no border. */
+.shopfront .plate3d{position:absolute; left:50px; top:100px; width:56px; height:35px;}
+.nameplate{
+  margin-top:10px; padding-top:9px; border-top:1px solid var(--strong);
+  font-size:13px; color:var(--ink-2); overflow-wrap:anywhere;
+}
+.nameplate .n{color:var(--ink); display:block; margin-bottom:2px;}
+.lot.lit .nameplate .n{font-weight:600;}
+.lamp{display:inline-block; width:8px; height:8px; margin-right:6px; border:1px solid var(--strong); vertical-align:1px;}
+.lot.lit .lamp{background:var(--datum); border-color:#B0741A;}
+.hint{font-size:13px; color:var(--ink-2); margin-top:12px;}
+.rank{font-size:18px; margin-top:16px;}
+.rank b{font-weight:600;}
 
-.panel{
-  border:1px solid var(--rule);
-  background:var(--panel);
+/* =============================== READING =============================== */
+.reading{display:grid; grid-template-columns:270px 1fr; gap:34px; align-items:start;}
+.reading > *{min-width:0;}
+.blank{
+  grid-column:1/-1; font:400 18px/1.45 var(--sans); color:var(--ink-2);
+  padding:22px 0 12px; max-width:640px;
 }
-.panel > .head{
-  display:flex; align-items:center; justify-content:space-between; gap:16px;
-  padding:14px 18px;
-  border-bottom:1px solid var(--rule);
-  background:var(--panel-2);
+/* The desk is an opaque warm-paper illustration whose paper is close to, but
+   not exactly, --ground. A 2px paper mat inside a hairline makes that seam
+   read as a mount rather than as a mismatch. */
+.desk{margin:0;}
+.desk img{
+  display:block; width:100%; height:auto;
+  background:var(--ground); border:1px solid var(--hair); padding:2px;
 }
-.panel > .body{ padding:18px; }
-
-/* ================= AGENT TIMELINE ================= */
-.agents{ display:flex; flex-direction:column; }
-.agent{
-  display:grid;
-  grid-template-columns:44px 1fr auto;
-  gap:16px; align-items:start;
-  padding:16px 18px;
-  border-bottom:1px solid var(--rule);
-  opacity:.5;
-  transition:opacity .2s linear, background .2s linear;
+.desk figcaption{margin-top:16px;}
+.figure{display:flex; align-items:baseline; gap:16px;}
+.score{font:400 96px/.8 var(--serif); letter-spacing:-.02em;}
+.gradestamp{
+  font:400 40px/1 var(--serif); border:1px solid var(--strong);
+  padding:9px 16px 12px; color:var(--ink);
 }
-.agent:last-child{ border-bottom:0; }
-.agent.active{ opacity:1; background:#101A1C; }
-.agent.finished{ opacity:1; }
-
-.glyph{
-  width:44px; height:44px; border:1px solid var(--rule);
-  display:grid; place-items:center; color:var(--ink-3);
-}
-.agent.active .glyph{ border-color:var(--amber); color:var(--amber); }
-.agent.finished .glyph{ border-color:var(--signal); color:var(--signal); }
-.glyph svg{ display:block; }
-
-.agent .name{ font-size:20px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
-.agent .msg{
-  font-size:17px; color:var(--ink-2); margin-top:5px;
-  /* keep long agent chatter from reflowing the whole panel */
-  min-height:1.45em;
-}
-.agent.active .msg{ color:var(--ink); }
-
-.state{
-  font-size:16px; letter-spacing:.18em; text-transform:uppercase;
-  padding:5px 12px; border:1px solid var(--rule); color:var(--ink-3);
-  white-space:nowrap;
-}
-.state[data-s="working"]{ border-color:var(--amber); color:var(--amber); }
-.state[data-s="done"]{ border-color:var(--signal); color:var(--signal); }
-
-/* ================= GRADE ================= */
-.gradewrap{ display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:center; }
-.dial{
-  width:184px; height:184px; position:relative; flex:0 0 auto;
-}
-.dial svg{ display:block; transform:rotate(-90deg); }
-.dial .readout{
-  position:absolute; inset:0; display:grid; place-content:center; text-align:center;
-}
-.dial .num{
-  font-size:64px; font-weight:700; line-height:1; letter-spacing:-.02em;
-  font-variant-numeric:tabular-nums;
-}
-.dial .of{ font-size:16px; color:var(--ink-3); letter-spacing:.2em; margin-top:8px; }
-
-.letter{
-  font-size:96px; font-weight:700; line-height:.9; letter-spacing:-.04em;
-}
-.gradenote{ font-size:17px; color:var(--ink-2); margin-top:12px; max-width:34ch; }
-.noise{ font-size:16px; color:var(--ink-3); margin-top:10px; }
-
-/* ================= FACT SHEET ================= */
-table.sheet{ width:100%; border-collapse:collapse; font-size:17px; }
+.of{font-size:13px; color:var(--ink-2); margin-top:14px;}
+.floor{font-size:13px; color:var(--ink-2); margin-top:14px; max-width:34ch; line-height:1.55;}
+.floor b{color:var(--ink); font-weight:450;}
+table.sheet{width:100%; border-collapse:collapse; table-layout:fixed;}
 table.sheet th{
-  text-align:left; font-size:16px; letter-spacing:.18em; text-transform:uppercase;
-  color:var(--ink-3); font-weight:500; padding:0 12px 10px 0;
-  border-bottom:1px solid var(--rule);
+  text-align:left; font:450 13px/1.3 var(--sans); color:var(--ink-2);
+  padding:0 12px 8px 0; border-bottom:1px solid var(--strong);
 }
 table.sheet td{
-  padding:13px 12px 13px 0; border-bottom:1px solid var(--rule);
-  vertical-align:top;
+  padding:11px 12px 11px 0; border-bottom:1px solid var(--hair);
+  vertical-align:top; font-size:13px; overflow-wrap:break-word;
 }
-table.sheet tr:last-child td{ border-bottom:0; }
-.verdict{
-  font-size:16px; letter-spacing:.14em; text-transform:uppercase;
-  padding:3px 9px; border:1px solid currentColor; white-space:nowrap;
-}
-.v-wrong{ color:var(--alert); }
-.v-missing{ color:var(--amber); }
-.stated{ color:var(--alert); }
-.expected{ color:var(--signal); }
-.engine{ color:var(--ink-2); white-space:nowrap; }
-.empty{ color:var(--ink-3); font-size:17px; padding:10px 0; }
+table.sheet tr:last-child td{border-bottom:0;}
+td.d{font-family:var(--mono); font-size:13px; overflow-wrap:anywhere;}
+td.stated{color:var(--verdict);}
+tr.v-disputed td.stated,tr.v-disputed td.truth,tr.v-missing td.stated{color:var(--ink-2);}
+td.truth{color:var(--measured);}
+td.eng{color:var(--ink-2);}
+.vd{display:inline-flex; align-items:center; gap:7px; white-space:nowrap; font-size:13px;}
+.vd i{width:8px; height:8px; border:1px solid currentColor; font-style:normal; flex:0 0 auto;}
+.v-wrong .vd{color:var(--verdict);} .v-wrong .vd i{background:currentColor;}
+.v-missing .vd{color:var(--ink);}
+.v-disputed .vd{color:var(--ink-2);} .v-disputed .vd i{background:linear-gradient(90deg,currentColor 50%,transparent 50%);}
 
-/* ================= STREET / RANK ================= */
+/* ================================ PROBE ================================ */
+.probe .meta{font-size:13px; color:var(--ink-2); margin-bottom:16px; overflow-wrap:anywhere;}
+.probe .meta b{color:var(--ink); font-weight:450;}
+.cols{display:grid; grid-template-columns:1fr 56px 1fr; align-items:stretch;}
+.colhead{font:450 13px/1 var(--sans); color:var(--ink-2); padding-bottom:9px; border-bottom:1px solid var(--strong);}
+.colhead.b,.cell.b{text-align:right;}
+.cell{
+  font-family:var(--mono); font-size:13px; padding:9px 0; min-height:38px;
+  border-bottom:1px solid var(--hair); color:var(--ink-2); overflow-wrap:anywhere;
+}
+.cell.on{color:var(--ink);}
+.link{border-bottom:1px solid var(--hair); display:grid; place-items:center;}
+.link i{display:block; width:100%; height:1px; background:var(--hair);}
+.link.tied i{background:var(--strong);}
+.overlap{display:flex; align-items:baseline; gap:16px; margin-top:22px; flex-wrap:wrap;}
+.overlap .pct{font:400 40px/1 var(--serif);}
+.overlap .cap{font-size:13px; color:var(--ink-2); max-width:64ch; line-height:1.55;}
 
-/* pre-rendered isometric street strip — see design/BLENDER-HANDOFF.md.
-   Sprites read ~120px tall against #0b0d10; street.png tiles beneath
-   them via background-repeat. Lighting is driven only by `lit`; the
-   plaque (payment) and sign (deploy) are independent overlays. */
-.stage{
-  position:relative;
-  height:160px;
-  margin-bottom:16px;
-  border-bottom:1px solid var(--rule);
-  background-image:url("assets/street.png");
-  background-repeat:repeat-x;
-  background-position:bottom left;
-  background-size:160px 40px;
+/* =============================== TIMELINE =============================== */
+.tl{border-top:1px solid var(--hair);}
+.ag{
+  display:grid; grid-template-columns:132px 1fr 152px; gap:20px; align-items:baseline;
+  padding:13px 0; border-bottom:1px solid var(--hair);
 }
-.stage-shops{
-  position:absolute; left:0; right:0; bottom:24px;
-  display:flex; align-items:flex-end; gap:12px;
-  padding:0 12px; overflow-x:auto;
-}
-.stage-shop{
-  position:relative; height:120px; flex:0 0 auto;
-}
-.stage-shop .sprite{ position:absolute; left:0; bottom:0; display:block; }
-.stage-shop .plaque{
-  position:absolute; left:30%; top:38%; width:26%; height:auto; display:block;
-}
-.stage-shop .sign{
-  position:absolute; left:-34px; bottom:0; width:40px; height:auto; display:block;
-}
+.ag > *{min-width:0;}
+.ag .nm{font:450 15px/1.4 var(--sans); color:var(--ink-3);}
+.ag .ms{font-size:13px; color:var(--ink-3); overflow-wrap:anywhere;}
+.ag[data-b="working"] .nm,.ag[data-b="waiting"] .nm,.ag[data-b="done"] .nm,
+.ag[data-b="paid"] .nm,.ag[data-b="failed"] .nm{color:var(--ink);}
+.ag[data-b="working"] .ms,.ag[data-b="waiting"] .ms,.ag[data-b="done"] .ms,
+.ag[data-b="paid"] .ms{color:var(--ink-2);}
+.ag[data-b="failed"] .ms{color:var(--verdict);}
+.st{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--ink-3); justify-self:end;}
+.ag[data-b="done"] .st{color:var(--measured);}
+.ag[data-b="failed"] .st{color:var(--verdict);}
+.ag[data-b="paid"] .st{color:var(--ink);}
+.ag[data-b="working"] .st,.ag[data-b="waiting"] .st{color:var(--ink);}
+.tick{width:26px; height:8px; border:1px solid var(--strong); flex:0 0 auto; position:relative; overflow:hidden;}
+.ag[data-b="done"] .tick{background:var(--measured); border-color:var(--measured);}
+.ag[data-b="failed"] .tick{background:var(--verdict); border-color:var(--verdict);}
+.ag[data-b="paid"] .tick{background:var(--brass); border-color:var(--brass);}
+.tick::after{content:""; position:absolute; inset:1px auto 1px 0; width:7px; background:var(--ink); transform:translateX(-9px);}
+.ag[data-b="working"] .tick::after,.ag[data-b="waiting"] .tick::after{animation:sweep 1.5s cubic-bezier(.4,0,.6,1) infinite;}
+body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:translateX(-9px);}
+@keyframes sweep{from{transform:translateX(-9px);} to{transform:translateX(26px);}}
+.ag details{margin-top:6px; font-size:13px; color:var(--ink-2);}
+.ag summary{cursor:pointer; color:var(--ink-2);}
+.ag details code{font-family:var(--mono); font-size:13px; display:block; margin-top:5px; color:var(--ink-2); overflow-wrap:anywhere;}
 
-.rankline{
-  display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
-  font-size:22px; padding-bottom:16px;
-}
-.rankline b{ font-size:28px; font-weight:700; color:var(--amber); }
-.street{ display:flex; gap:10px; flex-wrap:wrap; }
-.shop{
-  font-size:16px; padding:7px 12px; border:1px solid var(--rule);
-  color:var(--ink-3); display:flex; align-items:center; gap:9px;
-}
-.shop .bulb{ width:9px; height:9px; border:1px solid var(--ink-3); border-radius:50%; }
-.shop.lit{ color:var(--ink); border-color:var(--rule-hot); }
-.shop.lit .bulb{ background:var(--amber); border-color:var(--amber); box-shadow:0 0 10px rgba(255,176,32,.7); }
-.shop.you{ border-color:var(--cool); color:var(--cool); }
-.shop.you .bulb{ border-color:var(--cool); }
-.shop.you.lit .bulb{ background:var(--cool); box-shadow:0 0 10px rgba(91,185,255,.7); }
+/* ================================= COST ================================= */
+.ledger{display:grid; grid-template-columns:repeat(5,1fr); border-top:1px solid var(--strong);}
+.ledger > div{padding:14px 18px 16px; border-right:1px solid var(--hair); min-width:0;}
+.ledger > div:last-child{border-right:0;}
+.ledger .k{font-size:13px; color:var(--ink-2);}
+.ledger .v{font:400 24px/1.2 var(--sans); font-weight:450; margin-top:4px;}
+.pending-line{font-size:15px; color:var(--ink-2); padding:6px 0 2px;}
 
-/* ================= DEPLOYED URL ================= */
-.deploy{
-  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  padding:16px 18px; border:1px solid var(--rule); background:var(--panel-2);
-}
-.deploy a{
-  font-size:26px; color:var(--cool); text-decoration:none;
-  border-bottom:1px solid rgba(91,185,255,.4); word-break:break-all;
-}
-.deploy a:hover{ border-bottom-color:var(--cool); }
-.deploy .pending{ font-size:20px; color:var(--ink-3); }
-
-/* ============================================================
-   NON-DETERMINISM PANEL — the money shot
-   ============================================================ */
-.nd{
-  margin-top:22px;
-  border:1px solid var(--rule-hot);
-  background:linear-gradient(180deg,#0F1618,#0A1011);
-}
-.nd > .head{
-  padding:16px 18px; border-bottom:1px solid var(--rule-hot);
-  display:flex; align-items:baseline; justify-content:space-between; gap:18px; flex-wrap:wrap;
-  background:#121B1E;
-}
-.nd .title{ font-size:22px; font-weight:700; letter-spacing:.20em; text-transform:uppercase; }
-.nd .query{ font-size:17px; color:var(--ink-2); }
-.nd .query em{ color:var(--ink); font-style:normal; }
-
-.nd-body{
-  display:grid;
-  grid-template-columns: 1fr 240px 1fr;
-  gap:0;
-}
-@media (max-width:980px){ .nd-body{ grid-template-columns:1fr; } }
-
-.side{ padding:20px; }
-.side.b{ border-left:1px solid var(--rule); }
-@media (max-width:980px){ .side.b{ border-left:0; border-top:1px solid var(--rule); } }
-.side h4{
-  margin:0 0 4px; font-size:18px; font-weight:700;
-  letter-spacing:.16em; text-transform:uppercase;
-}
-.side .stamp{ font-size:16px; color:var(--ink-3); margin-bottom:16px; }
-
-ul.cites{ list-style:none; margin:0; padding:0; }
-ul.cites li{
-  display:flex; align-items:center; gap:12px;
-  padding:9px 0; border-bottom:1px dashed var(--rule);
-  font-size:18px; color:var(--ink-3);
-}
-ul.cites li:last-child{ border-bottom:0; }
-ul.cites li .box{ width:12px; height:12px; border:1px solid var(--ink-3); flex:0 0 auto; }
-ul.cites li.shared{ color:var(--signal); }
-ul.cites li.shared .box{ background:var(--signal); border-color:var(--signal); }
-ul.cites li.only{ color:var(--ink-2); }
-
-.meter{
-  display:grid; place-content:center; text-align:center;
-  border-left:1px solid var(--rule); border-right:1px solid var(--rule);
-  padding:20px 14px; background:#0B1113;
-}
-@media (max-width:980px){ .meter{ border:0; border-top:1px solid var(--rule); } }
-.meter .big{
-  font-size:88px; font-weight:700; line-height:.9; letter-spacing:-.04em;
-  color:var(--alert); font-variant-numeric:tabular-nums;
-}
-.meter .cap{ font-size:16px; letter-spacing:.20em; text-transform:uppercase; color:var(--ink-3); margin-top:12px; }
-.meter .frac{ font-size:18px; color:var(--ink-2); margin-top:8px; }
-.meter hr{ border:0; border-top:1px solid var(--rule); margin:18px 0; }
-.meter .cmp{ font-size:16px; color:var(--ink-3); line-height:1.6; }
-.meter .cmp b{ color:var(--ink-2); }
-
-.nd-foot{
-  border-top:1px solid var(--rule); padding:14px 18px;
-  font-size:17px; color:var(--ink-2);
-}
-.nd-foot b{ color:var(--ink); }
-
-/* ================= BUDGET LEDGER ================= */
-.ledger{
-  margin-top:22px; border:1px solid var(--rule); background:var(--panel);
-  display:flex; align-items:stretch; flex-wrap:wrap;
-}
-.ledger .cell{
-  padding:16px 20px; border-right:1px solid var(--rule); flex:1 1 180px;
-}
-.ledger .cell:last-child{ border-right:0; }
-.ledger .cell .lbl{ display:block; margin-bottom:8px; }
-.ledger .cell .v{ font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
-.ledger .cell .who{ font-size:16px; color:var(--ink-3); margin-top:5px; }
-.ledger .cell.total{ background:var(--panel-2); }
-.ledger .cell.total .v{ color:var(--signal); }
-.ledger .cell.cap .v{ color:var(--ink-2); }
-
-/* ================= FOOT ================= */
+/* ================================ FOOTER ================================ */
 .foot{
-  margin-top:26px; padding-top:16px; border-top:1px solid var(--rule);
-  font-size:16px; color:var(--ink-3); display:flex; gap:24px; flex-wrap:wrap;
+  margin-top:40px; padding-top:16px; border-top:1px solid var(--strong);
+  font-size:13px; color:var(--ink-2); display:flex; flex-wrap:wrap; gap:8px 26px;
 }
-.foot b{ color:var(--ink-2); }
+.foot b{color:var(--ink); font-weight:450;}
+.foot .rid{width:100%; color:var(--ink-3); font-family:var(--mono); margin-top:6px;}
 
-.fade{ animation:fade .22s ease-out; }
-@keyframes fade{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:none; } }
-
+/* =========== MOTION: THE NEEDLE SETTLES. one overshoot, damped. ==========
+   180ms out, 220ms back, exponential ease-out. Never a fade. Never a pulse. */
+@keyframes settle{
+  0%{transform:translate3d(0,0,0);}
+  45%{transform:translate3d(0,-6px,0);}
+  100%{transform:translate3d(0,0,0);}
+}
+.settling{animation:settle 400ms cubic-bezier(.16,1,.3,1) both;}
 @media (prefers-reduced-motion:reduce){
-  *{ animation:none !important; transition:none !important; }
+  *,*::before,*::after{animation:none !important; transition:none !important;}
+}
+
+/* ============================== 390 AND UP ============================== */
+@media (max-width:900px){
+  :root{--gut:20px;}
+  .mast-in{grid-template-columns:1fr; gap:16px;}
+  .claim{font-size:14px;}
+  .runstat{white-space:normal;}
+  .reading{grid-template-columns:1fr; gap:24px;}
+  .cols{grid-template-columns:1fr 1fr; column-gap:16px;}
+  .link,.gap{display:none;}
+  .ag{grid-template-columns:1fr; gap:4px; padding:14px 0;}
+  .st{justify-self:start;}
+  .ledger{grid-template-columns:1fr 1fr;}
+  .ledger > div{border-bottom:1px solid var(--hair);}
+  table.sheet{table-layout:auto;}
+  table.sheet th{width:auto !important;}
+  table.sheet th:nth-child(4),table.sheet td.eng{display:none;}
+  .score{font-size:72px;}
+}
+
+/* Mobile hero: the full composition is unreadable at 390, so the source is
+   centre-cropped to 390x260 — the central unlit shop with lit storefronts at
+   its sides. Full-bleed to the viewport edges; the page keeps its gutter. */
+@media (max-width:480px){
+  .hero{margin-left:calc(-1 * var(--gut)); margin-right:calc(-1 * var(--gut));}
+  .hero img{height:260px; object-fit:cover; object-position:center;}
 }
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- the datum glyph: a circled cross. authored once, reused everywhere. -->
+    <symbol id="g-datum" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="1.3">
+        <circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v18.8M2.6 12h18.8"/>
+      </g>
+    </symbol>
+    <!-- the benchmark plate: engraved frame + datum. the masthead mark. The
+         shopfront plate is the rendered brass one, /assets/plate-3d.png. -->
+    <symbol id="g-plate" viewBox="0 0 222 47">
+      <g fill="none" stroke="currentColor" stroke-width="1.3">
+        <rect x=".65" y=".65" width="220.7" height="45.7"/>
+        <rect x="4.65" y="4.65" width="212.7" height="37.7" opacity=".5"/>
+        <path d="M45 10.5v26" opacity=".5"/>
+      </g>
+      <use href="#g-datum" x="14" y="13" width="21" height="21"/>
+    </symbol>
+  </defs>
+</svg>
+
 <header class="mast">
   <div class="mast-in">
-    <div class="mark"><b>VOUCH</b><span>instrument v0.1</span></div>
-    <div class="tag">Customers ask AI what&rsquo;s good nearby. We grade the answers.</div>
-    <div class="runid"><span class="led" id="led"></span><span id="runid">run — idle</span></div>
+    <div class="ident">
+      <svg class="datum" viewBox="0 0 16 16" role="img" aria-label="Vouch"><use href="#g-datum"/></svg>
+      <span class="wordmark">Vouch</span>
+    </div>
+    <p class="claim">Customers ask AI what&rsquo;s good nearby. We grade the answers.</p>
+    <div class="runstat" id="runstat">
+      <span class="biz" id="run-biz"></span>
+      <span class="el" id="clock">00:00</span>
+      <span class="word"><span class="dot" id="dot" data-s="idle"></span><span id="run-word">idle</span></span>
+    </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ CONTROL ============ -->
-  <section class="control">
-    <label class="field">
-      <span class="lbl">Business</span>
-      <input id="in-biz" value="Golden Boy Pizza" placeholder="Name of a local business" autocomplete="off">
-    </label>
-    <label class="field">
-      <span class="lbl">City</span>
-      <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off">
-    </label>
-    <button class="run" id="btn-run">Run</button>
-    <button class="ghost" id="btn-reset">Reset</button>
+  <figure class="hero">
+    <img src="/assets/hero-street.png"
+         srcset="/assets/hero-street.png 1x, /assets/hero-street@2x.png 2x"
+         width="2400" height="600"
+         alt="A block of storefronts drawn in ink on paper; three shop windows lit">
+  </figure>
+
+  <section class="controls">
+    <label class="f"><span>Business</span>
+      <input id="in-biz" value="Golden Boy Pizza" placeholder="Name of a local business" autocomplete="off"></label>
+    <label class="f"><span>City</span>
+      <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off"></label>
+    <button class="btn" id="btn-run">Run</button>
+    <button class="btn sub" id="btn-reset">Reset</button>
   </section>
 
-  <div class="grid">
+  <section class="sec">
+    <h2>The street<span class="aside">the shops an engine names when asked what is good nearby</span></h2>
+    <div class="well" id="well"><div class="row" id="row"><p class="none">The street appears when the first probe returns.</p></div></div>
+    <p class="rank" id="rank"></p>
+    <p class="hint">Lit = an AI engine cited this shop when asked. Plate = Vouch monitoring is active. Neither changes the other.</p>
+  </section>
 
-    <!-- ============ LEFT: AGENTS ============ -->
-    <section class="panel">
-      <div class="head">
-        <span class="lbl">Agent timeline</span>
-        <span class="lbl" id="clock">t+00.0s</span>
+  <section class="sec">
+    <h2>The reading<span class="aside">score computed in code from ground-truth diffs, never graded by a model</span></h2>
+    <div class="reading" id="reading">
+      <div class="blank" id="blank">
+        <figure class="desk">
+          <img src="/assets/empty-desk.png"
+               srcset="/assets/empty-desk.png 1x, /assets/empty-desk@2x.png 2x"
+               width="1200" height="800"
+               alt="A surveyor's desk seen from above: a street map, a benchmark plate, a dial gauge, calipers, a pencil and a blank notebook">
+          <figcaption>No audit yet. Run one to see what AI says about a business.</figcaption>
+        </figure>
       </div>
-      <div class="agents" id="agents"></div>
-    </section>
-
-    <!-- ============ RIGHT: AUDIT ============ -->
-    <div style="display:flex;flex-direction:column;gap:22px;">
-
-      <section class="panel">
-        <div class="head">
-          <span class="lbl">Audit grade</span>
-          <span class="lbl">code-computed, not LLM-graded</span>
+      <div id="figure" hidden>
+        <div class="figure">
+          <span class="score" id="score"></span>
+          <span class="gradestamp" id="grade"></span>
         </div>
-        <div class="body">
-          <div class="gradewrap">
-            <div class="dial">
-              <svg width="184" height="184" viewBox="0 0 184 184" aria-hidden="true">
-                <circle cx="92" cy="92" r="78" fill="none" stroke="#1D272B" stroke-width="14"/>
-                <circle id="arc" cx="92" cy="92" r="78" fill="none" stroke="#63777C" stroke-width="14"
-                        stroke-linecap="butt" stroke-dasharray="490" stroke-dashoffset="490"
-                        style="transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1), stroke .3s linear"/>
-              </svg>
-              <div class="readout">
-                <div class="num" id="score">—</div>
-                <div class="of">of 100</div>
-              </div>
-            </div>
-            <div>
-              <div class="letter" id="letter" style="color:var(--ink-3)">—</div>
-              <div class="gradenote" id="gradenote">Awaiting probe. Score is computed in code from ground-truth diffs, never graded by a model.</div>
-              <div class="noise">Noise floor: <b style="color:var(--ink-2)">SD 4.73 pts</b> audit-to-audit &middot; engine version pinned</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="head">
-          <span class="lbl">Wrong &amp; missing facts</span>
-          <span class="lbl" id="factcount">0 found</span>
-        </div>
-        <div class="body">
-          <table class="sheet">
-            <thead>
-              <tr><th style="width:20%">Fact</th><th style="width:28%">AI stated</th><th style="width:28%">Ground truth</th><th style="width:12%">Engine</th><th style="width:12%">Verdict</th></tr>
-            </thead>
-            <tbody id="facts">
-              <tr><td colspan="5" class="empty">No probes returned yet.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="head">
-          <span class="lbl">Shops down the street</span>
-          <span class="lbl">lit = cited by an engine</span>
-        </div>
-        <div class="body">
-          <div class="stage" id="stage" aria-hidden="true">
-            <div class="stage-shops" id="stageShops"></div>
-          </div>
-          <div class="rankline" id="rankline"><span style="color:var(--ink-3);font-size:18px">Rank pending.</span></div>
-          <div class="street" id="street"></div>
-        </div>
-      </section>
-
-      <div class="deploy" id="deploy">
-        <span class="lbl">Deployed</span>
-        <span class="pending" id="urlslot">not yet built</span>
+        <p class="of">out of 100 &middot; <span id="factsum"></span></p>
+        <p class="floor">Noise floor <b>SD 4.73 points</b> audit to audit. Engine version pinned; readings from different versions are never compared. Disputed facts fell below the classifier&rsquo;s confidence floor and are excluded from the score.</p>
       </div>
-
-    </div>
-  </div>
-
-  <!-- ============ NON-DETERMINISM — THE MONEY SHOT ============ -->
-  <section class="nd" id="nd">
-    <div class="head">
-      <span class="title">Non-determinism probe</span>
-      <span class="query">Same engine, same prompt, <em id="nd-gap">back to back</em> &middot; <em id="nd-engine">Gemini</em> &middot; <span id="nd-q">&ldquo;best bakery in the Mission, San Francisco&rdquo;</span></span>
-    </div>
-    <div class="nd-body">
-      <div class="side a">
-        <h4 style="color:var(--ink)">Run A</h4>
-        <div class="stamp" id="nd-a-stamp">—</div>
-        <ul class="cites" id="nd-a"><li class="only"><span class="box"></span>awaiting probe</li></ul>
+      <div id="sheetwrap" hidden>
+        <table class="sheet">
+          <thead><tr>
+            <th style="width:17%">Fact</th><th style="width:26%">AI stated</th>
+            <th style="width:26%">Ground truth</th><th style="width:15%">Engine</th><th style="width:16%">Verdict</th>
+          </tr></thead>
+          <tbody id="facts"></tbody>
+        </table>
       </div>
-      <div class="meter">
-        <div class="big" id="nd-pct">—</div>
-        <div class="cap">source overlap</div>
-        <div class="frac" id="nd-frac">&nbsp;</div>
-        <hr>
-        <div class="cmp" id="nd-cmp"></div>
-      </div>
-      <div class="side b">
-        <h4 style="color:var(--ink)">Run B</h4>
-        <div class="stamp" id="nd-b-stamp">—</div>
-        <ul class="cites" id="nd-b"><li class="only"><span class="box"></span>awaiting probe</li></ul>
-      </div>
-    </div>
-    <div class="nd-foot" id="nd-foot">
-      The answer surface is unstable. <b>That is why this is a subscription, not a project.</b>
     </div>
   </section>
 
-  <!-- ============ BUDGET LEDGER ============ -->
-  <section class="ledger">
-    <div class="cell"><span class="lbl">Engines</span><div class="v" id="c-engines">$0.00</div><div class="who">probes testify (fixed cost)</div></div>
-    <div class="cell"><span class="lbl">Decisions</span><div class="v" id="c-decisions">$0.00</div><div class="who">classification &amp; routing</div></div>
-    <div class="cell"><span class="lbl">Writing</span><div class="v" id="c-writing">$0.00</div><div class="who">page + outreach draft</div></div>
-    <div class="cell total"><span class="lbl">Cost of this run</span><div class="v" id="c-total">$0.00</div><div class="who">one acquired customer</div></div>
-    <div class="cell cap"><span class="lbl">Cap</span><div class="v" id="c-cap">$2.00</div><div class="who">breaker armed</div></div>
+  <section class="sec probe">
+    <h2>The non-determinism probe<span class="aside">one engine, one prompt, asked twice</span></h2>
+    <p class="meta" id="probe-meta">Not yet run.</p>
+    <div class="cols" id="cols">
+      <div class="colhead a">First ask</div><div class="gap"></div><div class="colhead b">Second ask</div>
+    </div>
+    <p class="overlap"><span class="pct" id="pct"></span><span class="cap" id="pct-cap">Source overlap is measured once the same prompt has been asked twice.</span></p>
+  </section>
+
+  <section class="sec">
+    <h2>Agents<span class="aside">a human approves before anything leaves the building</span></h2>
+    <div class="tl" id="agents"></div>
+  </section>
+
+  <section class="sec">
+    <h2>Cost of this run</h2>
+    <p class="pending-line" id="cost-pending">Costs are reported when the run completes.</p>
+    <div class="ledger" id="ledger" hidden>
+      <div><div class="k">Engines</div><div class="v" id="c-engines"></div></div>
+      <div><div class="k">Decisions</div><div class="v" id="c-decisions"></div></div>
+      <div><div class="k">Writing</div><div class="v" id="c-writing"></div></div>
+      <div><div class="k">Total</div><div class="v" id="c-total"></div></div>
+      <div><div class="k">Cap</div><div class="v" id="c-cap"></div></div>
+    </div>
   </section>
 
   <div class="foot">
-    <span>Engines probed: <b>Claude (web search)</b></span>
+    <span>Engines probed: <b>Claude, with web search</b></span>
     <span>Ground truth: <b>Google Places (New)</b></span>
-    <span>Score: <b>computed in code</b></span>
-    <span>Honestly labeled: <b>we measure answers, we do not claim to change them</b></span>
+    <span>We measure answers; we do not claim to change them.</span>
+    <span class="rid"><span id="plate-engine">Instrument idle</span> &middot; <span id="plate-meta">no reading yet</span></span>
+    <span class="rid" id="runid">run id not assigned</span>
   </div>
 
 </main>
@@ -571,177 +451,181 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){
 /* Anchors only ever point at our own https pages. */
 function safeHref(u){try{return new URL(String(u)).protocol==='https:'?String(u):'#';}catch(e){return '#';}}
 
-/* ============================================================
+/* ===========================================================================
    EVENT FIXTURE
-   Contract (locked — backend swaps this array for a live feed):
-     { run_id, ts, agent, state,
-       business:{slug,name,lit},
-       competitors:[{name,lit}],
-       score, rank:[n,m], url, message }
-
-   Additive optional fields consumed by panels that the core
-   contract cannot express. All are OPTIONAL — a feed that omits
-   them renders a valid (emptier) dashboard:
+   Contract (locked; the backend swaps this array for a live feed):
+     { run_id, ts, agent, state, business:{slug,name,lit,category?},
+       competitors:[{name,lit}], score, grade, rank:[n,m], url, message }
+   business.category is Places' primaryTypeDisplayName when we have it. It
+   chooses a drawing for the hero shopfront and nothing else; competitors carry
+   no category, so they keep the generic shop.
+   Optional panels. Omitting one renders an emptier dashboard, not a broken one:
      facts:   [{key, stated, expected, engine, verdict}]
+              verdict = correct | wrong | missing | disputed
      overlap: {engine, query, gap, a:{ts,sources[]}, b:{ts,sources[]},
                top_business_same:bool}
      cost:    {engines, decisions, writing, cap}
-   ============================================================ */
 
-const EVENTS = [
+   PRODUCT RULE, NOT A STYLE CHOICE: business.lit is false for the whole
+   fixture. The hero is never lit by deploying or by paying. Lighting is audit
+   data only; asserting otherwise is the causal claim BRIEF.md §11 forbids.
+   =========================================================================== */
+var HERO = {slug:"tartine-bakery", name:"Tartine Bakery", lit:false, category:"Bakery"};
+var STREET = [
+  {name:"Arsicault Bakery", lit:true}, {name:"b. Patisserie", lit:true},
+  {name:"Jane the Bakery", lit:true}, {name:"Neighbor Bakehouse", lit:false},
+  {name:"Marla Bakery", lit:false}
+];
+var EVENTS = [
   { run_id:"run_9f2a41", ts:1790000000, agent:"orchestrator", state:"working",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:null, rank:null, url:null,
-    message:"Run opened. Budget cap $2.00. Engine versions pinned; audits never compared across versions." },
+    business:HERO, competitors:[], score:null, rank:null, url:null,
+    message:"Run opened. Budget cap $2.00. Engine versions pinned; audits are never compared across versions." },
 
   { run_id:"run_9f2a41", ts:1790000003, agent:"auditor", state:"probing",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:null, rank:null, url:null,
+    business:HERO, competitors:[], score:null, rank:null, url:null,
     message:"Ground truth pulled from Google Places (New). 12 fact probes armed across 3 engines." },
 
   { run_id:"run_9f2a41", ts:1790000009, agent:"auditor", state:"probing",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:null, rank:null, url:null,
+    business:HERO, competitors:[], score:null, rank:null, url:null,
     message:"Claude says closed Mondays. It is open 08:00–17:00.",
     facts:[{key:"Hours (Mon)", stated:"Closed Mondays", expected:"Open 08:00–17:00", engine:"Claude", verdict:"wrong"}] },
 
   { run_id:"run_9f2a41", ts:1790000014, agent:"auditor", state:"probing",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:null, rank:null, url:null,
-    message:"Phone number returned by OpenAI does not match the listing of record.",
+    business:HERO, competitors:[], score:null, rank:null, url:null,
+    message:"The phone number Claude returned is the retired wholesale line.",
     facts:[
-      {key:"Phone", stated:"(415) 487-2600", expected:"(415) 487-2600 ext. closed line", engine:"OpenAI", verdict:"wrong"},
-      {key:"Address", stated:"600 Guerrero St", expected:"600 Guerrero St", engine:"OpenAI", verdict:"correct"}
+      {key:"Phone", stated:"(415) 487-2601", expected:"(415) 487-2600", engine:"Claude", verdict:"wrong"},
+      {key:"Address", stated:"600 Guerrero St", expected:"600 Guerrero St", engine:"Claude", verdict:"correct"}
     ] },
 
   { run_id:"run_9f2a41", ts:1790000019, agent:"auditor", state:"probing",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:null, rank:null, url:null,
-    message:"Gemini could not answer catering or wholesale. Two probes returned nothing.",
+    business:HERO, competitors:[], score:null, rank:null, url:null,
+    message:"Claude could not answer catering or gluten-free. Two probes returned nothing.",
     facts:[
-      {key:"Catering", stated:"—", expected:"Wholesale + event catering", engine:"Gemini", verdict:"missing"},
-      {key:"Gluten-free", stated:"—", expected:"No dedicated GF line", engine:"Gemini", verdict:"missing"}
+      {key:"Catering", stated:null, expected:"Wholesale and event catering", engine:"Claude", verdict:"missing"},
+      {key:"Gluten-free", stated:null, expected:"No dedicated GF line", engine:"Claude", verdict:"missing"}
+    ] },
+
+  { run_id:"run_9f2a41", ts:1790000023, agent:"auditor", state:"probing",
+    business:HERO, competitors:[], score:null, rank:null, url:null,
+    message:"Two verdicts fell below the classifier's confidence floor. Shown, not scored.",
+    facts:[
+      {key:"Reservations", stated:"Takes reservations", expected:"Walk-in only", engine:"Claude", verdict:"disputed"},
+      {key:"Category", stated:"Café", expected:"Bakery", engine:"Claude", verdict:"disputed"}
     ] },
 
   { run_id:"run_9f2a41", ts:1790000026, agent:"auditor", state:"done",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[
-      {name:"Arsicault Bakery", lit:true},
-      {name:"b. Patisserie", lit:true},
-      {name:"Jane the Bakery", lit:true},
-      {name:"Neighbor Bakehouse", lit:false},
-      {name:"Marla Bakery", lit:false}
-    ],
-    score:34, rank:[4,6], url:null,
-    message:"Sheet closed. 34/100. 4 wrong, 2 missing across 12 probes. Grade F." },
+    business:HERO, competitors:STREET, score:34, grade:"F", rank:[4,6], url:null,
+    message:"Sheet closed. 34 of 100 across 12 probes. Two disputed rows excluded from the score." },
 
   { run_id:"run_9f2a41", ts:1790000032, agent:"orchestrator", state:"working",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:34, rank:[4,6], url:null,
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:null,
     message:"Re-running one probe verbatim to measure the noise floor, live.",
     overlap:{
-      engine:"Gemini",
-      query:"best bakery in the Mission, San Francisco",
-      gap:"90 seconds apart",
-      top_business_same:false,
-      a:{ ts:"14:02:11 PDT", sources:["tartinebakery.com","yelp.com","eater.com","sfgate.com","reddit.com","tripadvisor.com","thrillist.com"] },
-      b:{ ts:"14:03:41 PDT", sources:["tartinebakery.com","yelp.com","eater.com","timeout.com","theinfatuation.com","sfstandard.com","opentable.com"] }
+      engine:"Claude", query:"best bakery in the Mission, San Francisco", top_business_same:false,
+      a:{ ts:1790000032000, sources:["tartinebakery.com","yelp.com","eater.com","sfgate.com","reddit.com","tripadvisor.com","thrillist.com"] },
+      b:{ ts:1790000122000, sources:["tartinebakery.com","yelp.com","eater.com","timeout.com","theinfatuation.com","sfstandard.com","opentable.com"] }
     } },
 
   { run_id:"run_9f2a41", ts:1790000040, agent:"builder", state:"working",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:false},
-    competitors:[], score:34, rank:[4,6], url:null,
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:null,
     message:"Writing the highest-intent question it is losing, not a profile page. Facts go in visible HTML." },
 
   { run_id:"run_9f2a41", ts:1790000048, agent:"builder", state:"done",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[], score:34, rank:[4,6],
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6],
     url:"https://tartine-bakery.usevouch.dev",
     message:"Deployed to the wildcard Worker. Extractability check passed: 9 of 9 facts present as visible text." },
 
   { run_id:"run_9f2a41", ts:1790000054, agent:"revenue", state:"working",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
     message:"Pricing monthly monitoring at $39. Link carries business_id, run_id, slug." },
 
   { run_id:"run_9f2a41", ts:1790000059, agent:"revenue", state:"done",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
-    message:"Payment link live. Poll armed at 2s; webhook is the backup, not the primary." },
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Payment link live. Poll armed at 2s; the webhook is the backup, not the primary." },
 
   { run_id:"run_9f2a41", ts:1790000061, agent:"revenue", state:"paid",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
-    message:"Payment confirmed via poll. Monitoring plaque applied — lighting state is unaffected by payment." },
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Payment confirmed by poll. Monitoring plate applied. The lighting state is unchanged, and will stay that way." },
 
-  { run_id:"run_9f2a41", ts:1790000064, agent:"outreach", state:"working",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
-    message:"Draft written. Leads with the wrong Monday hours. Waiting on a human to approve." },
+  { run_id:"run_9f2a41", ts:1790000064, agent:"outreach", state:"waiting",
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    message:"Draft written. It leads with the wrong Monday hours. Nothing sends until a human approves it." },
 
   { run_id:"run_9f2a41", ts:1790000071, agent:"outreach", state:"done",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[], score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
+    business:HERO, competitors:[], score:34, grade:"F", rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
     message:"Approved by a human. Email sent from hello@usevouch.dev." },
 
   { run_id:"run_9f2a41", ts:1790000078, agent:"orchestrator", state:"done",
-    business:{slug:"tartine-bakery", name:"Tartine Bakery", lit:true},
-    competitors:[
-      {name:"Arsicault Bakery", lit:true},
-      {name:"b. Patisserie", lit:true},
-      {name:"Jane the Bakery", lit:true},
-      {name:"Neighbor Bakehouse", lit:false},
-      {name:"Marla Bakery", lit:false}
-    ],
-    score:34, rank:[4,6], url:"https://tartine-bakery.usevouch.dev",
-    message:"Paid. Monitoring on. One customer found, fixed and closed without a human in the loop until approval.",
+    business:HERO, competitors:STREET, score:34, grade:"F", rank:[4,6],
+    url:"https://tartine-bakery.usevouch.dev",
+    message:"Run closed. One business found, measured, written for and closed, with a human in the loop only at approval.",
     cost:{ engines:0.41, decisions:0.02, writing:0.18, cap:2.00 } }
 ];
 
-/* ---------- playback pacing ---------- */
-const SPEED = 2.6;          // compress fixture seconds for a 3-minute demo
-const MIN_MS = 340, MAX_MS = 1500;
+var SPEED = 2.6, MIN_MS = 340, MAX_MS = 1500;   // compress fixture seconds for a 3-minute demo
+var ENGINE_VERSION = "2026-09-28.1";            // pinned instrument; src/types.ts is the source of truth
 
-/* ---------- agent roster + glyphs (geometric, not emoji) ---------- */
-const AGENTS = [
-  { id:"orchestrator", name:"Orchestrator", glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="3"/><circle cx="11" cy="3" r="1.8"/><circle cx="18" cy="15" r="1.8"/><circle cx="4" cy="15" r="1.8"/><path d="M11 6v2M13.4 12.6l3 1.8M8.6 12.6l-3 1.8"/></svg>' },
-  { id:"auditor",      name:"Auditor",      glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18V8M8 18V4M13 18v-7M18 18v-3"/><path d="M2 20h18"/></svg>' },
-  { id:"builder",      name:"Builder",      glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 19V9l8-6 8 6v10"/><path d="M8 19v-6h6v6"/></svg>' },
-  { id:"revenue",      name:"Revenue",      glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="5.5" width="17" height="11"/><path d="M2.5 9.5h17M6 13.5h3"/></svg>' },
-  { id:"outreach",     name:"Outreach",     glyph:'<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4.5" width="17" height="13"/><path d="M2.5 6l8.5 6 8.5-6"/></svg>' }
+var AGENTS = [
+  {id:"orchestrator", name:"Orchestrator"}, {id:"auditor", name:"Auditor"},
+  {id:"builder", name:"Builder"}, {id:"revenue", name:"Revenue"}, {id:"outreach", name:"Outreach"}
 ];
 
-const $ = id => document.getElementById(id);
+/* Known failures get a sentence an owner can read. The raw string is kept, but
+   it lives inside a collapsed details element, not in the timeline copy. */
+var FAILURES = [
+  [/stripe/i,               "Payment could not be set up, so no offer was sent."],
+  [/places|google/i,        "Ground truth could not be fetched from Google Places."],
+  [/slack/i,                "The approval message could not be posted to Slack."],
+  [/linear/i,               "The tracking issue could not be updated."],
+  [/resend|email|smtp/i,    "The email could not be sent."],
+  [/budget|cap|breaker/i,   "The run stopped at its spending cap."],
+  [/timeout|timed out/i,    "An engine did not answer in time."],
+  [/rate.?limit|\b429\b/i,  "An engine rate-limited us, so the run stopped."],
+  [/auth|token|401|403/i,   "A credential was rejected."]
+];
+function humanFailure(raw){
+  var s = String(raw == null ? "" : raw);
+  for (var i = 0; i < FAILURES.length; i++) if (FAILURES[i][0].test(s)) return FAILURES[i][1];
+  return "This step did not complete. The run stopped here.";
+}
 
-/* ---------- build agent rows once ---------- */
-const agentEls = {};
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- the needle settles: one overshoot, damped, one thing at a time --- */
+function settle(el){
+  if (!el) return;
+  el.classList.remove("settling");
+  void el.offsetWidth;
+  el.classList.add("settling");
+}
+
+/* ---------- agent rows, mounted once ---------- */
+var agentEls = {};
 (function mountAgents(){
-  const host = $("agents");
+  var host = $("agents");
   host.innerHTML = "";
-  AGENTS.forEach(a => {
-    const row = document.createElement("div");
-    row.className = "agent";
-    row.innerHTML =
-      '<div class="glyph">' + a.glyph + '</div>' +
-      '<div><div class="name">' + a.name + '</div><div class="msg">idle</div></div>' +
-      '<div class="state" data-s="idle">idle</div>';
+  AGENTS.forEach(function(a){
+    var row = document.createElement("div");
+    row.className = "ag"; row.dataset.b = "idle";
+    row.innerHTML = '<div class="nm">' + a.name + '</div>' +
+      '<div><div class="ms">idle</div></div>' +
+      '<div class="st"><span class="tick"></span><span class="w">idle</span></div>';
     host.appendChild(row);
-    agentEls[a.id] = { row, msg:row.querySelector(".msg"), state:row.querySelector(".state") };
+    agentEls[a.id] = { row:row, body:row.children[1], msg:row.querySelector(".ms"), word:row.querySelector(".w") };
   });
 })();
 
 /* ---------- state ---------- */
-let timers = [], facts = [], t0 = 0, clockTimer = null, factsReceived = 0;
-/* street-scene sprite state — see design/BLENDER-HANDOFF.md. Lighting comes
-   only from business/competitors[].lit. `stagePaid` and `stageSignVisible`
-   are separate channels: payment never touches lighting. */
-let stageBusiness = null, stageCompetitors = [], stagePaid = false, stageSignVisible = false;
-
-/* ---------- live poll handle ----------
-   startPolling() replaces livePoll.stop with a closure over the running
-   poll loop; reset() and a fresh startPolling() call both use this to make
-   sure only one poll loop is ever ticking. */
-let livePoll = { stop: function(){} };
+var timers = [], facts = [], t0 = 0, clockTimer = null, factsReceived = 0;
+/* street state. Lighting comes only from business/competitors[].lit.
+   stagePaid and stageSignVisible are separate channels: payment never lights. */
+var stageBusiness = null, stageCompetitors = [], stagePaid = false, stageSignVisible = false;
+var litBefore = {};       // name -> bool, so a shop only animates the moment it lights
+var pendingScore = null;  // held until a fact has arrived; a grade with no probe is a lie
+/* startPolling() replaces livePoll.stop with a closure over the running poll
+   loop; reset() and a fresh startPolling() both use it so only one loop ticks. */
+var livePoll = { stop: function(){} };
 
 function gradeFor(s){
   if (s === null || s === undefined) return "—";
@@ -749,280 +633,324 @@ function gradeFor(s){
   if (s >= 70) return "C"; if (s >= 60) return "D";
   return "F";
 }
-function gradeColor(s){
-  if (s === null || s === undefined) return "var(--ink-3)";
-  if (s >= 80) return "var(--signal)";
-  if (s >= 60) return "var(--amber)";
-  return "var(--alert)";
+var money = function(n){ return "$" + Number(n).toFixed(2); };
+function mmss(ms){
+  var t = Math.max(0, Math.floor(ms / 1000));
+  return String(Math.floor(t / 60)).padStart(2,"0") + ":" + String(t % 60).padStart(2,"0");
 }
-const money = n => "$" + Number(n).toFixed(2);
+function setRunWord(word, dotState){
+  $("run-word").textContent = word;
+  $("dot").dataset.s = dotState;          // the mark changes on state change only
+  $("runstat").dataset.on = "1";
+}
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function setPlate(engine, ts){
+  $("plate-engine").textContent = engine || "Instrument idle";
+  if (!ts){ $("plate-meta").textContent = "no reading yet"; return; }
+  var d = new Date(typeof ts === "number" && ts < 1e12 ? ts * 1000 : ts);
+  $("plate-meta").textContent = String(d.getDate()).padStart(2,"0") + " " + MONTHS[d.getMonth()] +
+    " " + d.getFullYear() + "   v" + ENGINE_VERSION;
+}
 
 /* ---------- renderers ---------- */
 function renderAgent(ev){
-  // any state that is not idle/done is treated as working; raw state is shown verbatim.
-  // 'paid' (revenue agent, payment-confirmed) is a terminal state like 'done' for
-  // the timeline row — it does not, however, drive any lighting.
-  const bucket = (ev.state === "done" || ev.state === "paid") ? "done" : (ev.state === "idle" ? "idle" : "working");
-  const el = agentEls[ev.agent];
+  var el = agentEls[ev.agent];
   if (!el) return;
-  AGENTS.forEach(a => agentEls[a.id].row.classList.remove("active"));
-  el.row.classList.toggle("finished", bucket !== "idle");
-  if (bucket === "working") el.row.classList.add("active");
-  el.msg.textContent = ev.message || "";
-  el.msg.classList.remove("fade"); void el.msg.offsetWidth; el.msg.classList.add("fade");
-  el.state.dataset.s = bucket;
-  el.state.textContent = ev.state;
+  var s = ev.state;
+  var bucket = s === "idle" ? "idle"
+    : s === "done" ? "done" : s === "paid" ? "paid"
+    : s === "failed" ? "failed" : s === "waiting" ? "waiting" : "working";
+  el.row.dataset.b = bucket;
+  el.word.textContent = bucket === "waiting" ? "awaiting approval" : s;
+  if (bucket === "failed"){
+    el.msg.textContent = humanFailure(ev.message);
+    var det = el.body.querySelector("details");
+    if (!det){ det = document.createElement("details"); el.body.appendChild(det); }
+    det.innerHTML = '<summary>Show what the system reported</summary><code>' + esc(ev.message) + '</code>';
+  } else {
+    el.msg.textContent = ev.message || "";
+    var old = el.body.querySelector("details");
+    if (old) old.remove();
+  }
+  // "awaiting approval" is the only live thing on screen; everything else stills.
+  var waiting = AGENTS.some(function(a){ return agentEls[a.id].row.dataset.b === "waiting"; });
+  document.body.classList.toggle("awaiting", waiting);
+  if (waiting) setRunWord("awaiting approval", "awaiting");
+}
+
+function revealReading(){
+  if ($("figure").hidden === false) return;
+  $("blank").hidden = true; $("figure").hidden = false; $("sheetwrap").hidden = false;
 }
 
 function renderScore(score, grade){
   if (score === null || score === undefined) return;
+  if (!factsReceived){ pendingScore = {score:score, grade:grade}; return; }   // gate the grade on real probes
+  pendingScore = null;
+  revealReading();
   $("score").textContent = score;
-  const letter = $("letter");
-  const letterText = (typeof grade === "string" && grade) ? grade : gradeFor(score);
-  letter.textContent = letterText;
-  letter.style.color = gradeColor(score);
-  const arc = $("arc");
-  const C = 490;
-  arc.style.stroke = gradeColor(score);
-  arc.style.strokeDashoffset = String(C - (C * (score / 100)));
-  const verdictPhrase = factsReceived > 0 ? (" from " + factsReceived + " verdicts") : "";
-  $("gradenote").textContent =
-    "Grade " + letterText + ". Computed in code from ground-truth diffs" + verdictPhrase + " — no model graded this number.";
+  $("grade").textContent = (typeof grade === "string" && grade) ? grade : gradeFor(score);
+  settle($("score")); settle($("grade"));
+}
+
+function verdictRow(f){
+  var stated = f.stated == null || f.stated === "" ? "not stated" : f.stated;
+  var truth  = f.expected == null || f.expected === "" ? "not on record" : f.expected;
+  return '<tr class="v-' + esc(f.verdict) + '">' +
+    '<td>' + esc(f.key) + '</td>' +
+    '<td class="d stated">' + esc(stated) + '</td>' +
+    '<td class="d truth">' + esc(truth) + '</td>' +
+    '<td class="eng">' + esc(f.engine) + '</td>' +
+    '<td><span class="vd"><i></i>' + esc(f.verdict) + '</span></td></tr>';
 }
 
 function renderFacts(newFacts){
   factsReceived += newFacts.length;
-  newFacts.forEach(f => { if (f.verdict !== "correct") facts.push(f); });
-  const body = $("facts");
-  if (!facts.length){ body.innerHTML = '<tr><td colspan="5" class="empty">No probes returned yet.</td></tr>'; return; }
-  body.innerHTML = facts.map(f =>
-    '<tr class="fade">' +
-      '<td>' + esc(f.key) + '</td>' +
-      '<td class="stated">' + esc(f.stated) + '</td>' +
-      '<td class="expected">' + esc(f.expected) + '</td>' +
-      '<td class="engine">' + esc(f.engine) + '</td>' +
-      '<td><span class="verdict v-' + esc(f.verdict) + '">' + esc(f.verdict) + '</span></td>' +
-    '</tr>').join("");
-  const w = facts.filter(f => f.verdict === "wrong").length;
-  const m = facts.filter(f => f.verdict === "missing").length;
-  $("factcount").textContent = w + " wrong / " + m + " missing";
+  newFacts.forEach(function(f){ if (f.verdict !== "correct") facts.push(f); });
+  revealReading();
+  $("facts").innerHTML = facts.length ? facts.map(verdictRow).join("")
+    : '<tr><td colspan="5" style="color:var(--ink-2)">Every fact returned so far matched the record.</td></tr>';
+  var n = function(v){ return facts.filter(function(f){ return f.verdict === v; }).length; };
+  $("factsum").textContent = n("wrong") + " wrong · " + n("missing") + " missing · " + n("disputed") + " disputed";
+  if (pendingScore) renderScore(pendingScore.score, pendingScore.grade);
 }
 
 function renderRank(ev){
   if (!ev.rank) return;
-  const n = Number(ev.rank[0]);
-  const m = Number(ev.rank[1]);
-  if (!Number.isInteger(n) || !Number.isInteger(m)) return;
-  $("rankline").innerHTML =
-    '<span style="color:var(--ink-2)">Ranked</span> <b>' + n + 'th of ' + m + '</b> ' +
-    '<span style="color:var(--ink-2)">nearby bakeries when an engine is asked to recommend one.</span>';
+  var a = Number(ev.rank[0]), b = Number(ev.rank[1]);
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return;
+  $("rank").innerHTML = 'Ranked <b>' + a + ' of ' + b + '</b> nearby when an engine is asked to recommend one.';
 }
 
-function renderStreet(ev){
-  if (!ev.competitors || !ev.competitors.length) return;
-  const you = ev.business;
-  if (!you) return;
-  const shops = [{ name:you.name + "  (you)", lit:you.lit, you:true }]
-    .concat(ev.competitors.map(c => ({ name:c.name, lit:c.lit, you:false })));
-  $("street").innerHTML = shops.map(s =>
-    '<span class="shop' + (s.lit ? ' lit' : '') + (s.you ? ' you' : '') + '">' +
-    '<span class="bulb"></span>' + esc(s.name) + '</span>').join("");
-}
-
-/* Isometric street strip — pre-rendered PNG sprites, see BLENDER-HANDOFF.md.
-   `kind` is always the literal 'hero' or 'shop', `lit` is a boolean, so
-   these paths are never built from untrusted event text. */
-const SPRITE_H = 120;          // px — the handoff's projector-legibility test
-const SPRITE_AR = 512 / 768;   // sprite native width / height
-function spriteSrc(kind, lit){ return "assets/" + kind + "-" + (lit ? "lit" : "dark") + ".png"; }
+/* Pre-rendered isometric sprites, see design/BLENDER-HANDOFF.md. `kind` is
+   always one of a fixed set of literals and `lit` a boolean, so these paths are
+   never built from untrusted event text. */
+var SPRITE_H = 180, SPRITE_W = 120;    // 512x768 native, 2:3
 function spriteSrcset(kind, lit){
-  const base = kind + "-" + (lit ? "lit" : "dark");
-  return "assets/" + base + ".png 1x, assets/" + base + "@2x.png 2x";
+  var b = "/assets/" + kind + "-" + (lit ? "lit" : "dark");
+  return b + ".png 1x, " + b + "@2x.png 2x";
 }
-
-function renderStage(){
-  const host = $("stageShops");
+/* Places (New) returns primaryTypeDisplayName as free text — "Pizza
+   Restaurant", "Bakery", "Coffee Shop". It picks a drawing and nothing else:
+   the match returns a literal sprite name or null, and the category string
+   itself never reaches a path or the DOM. Lit/dark stays driven only by `lit`;
+   a category never lights a shop. */
+function spriteKindFor(category){
+  var c = String(category == null ? "" : category).toLowerCase();
+  if (c.indexOf("bakery") >= 0 || c.indexOf("bake") >= 0) return "shop-bakery";
+  if (c.indexOf("pizza") >= 0) return "shop-pizza";
+  if (c.indexOf("cafe") >= 0 || c.indexOf("café") >= 0 || c.indexOf("coffee") >= 0) return "shop-cafe";
+  return null;
+}
+function renderStreet(){
+  var host = $("row");
   if (!host || !stageBusiness) return;
-  const w = Math.round(SPRITE_H * SPRITE_AR);
-  const shops = [{ name: stageBusiness.name, lit: !!stageBusiness.lit, you: true }]
-    .concat((stageCompetitors || []).map(c => ({ name: c.name, lit: !!c.lit, you: false })));
-  host.innerHTML = shops.map(s => {
-    const kind = s.you ? "hero" : "shop";
-    let inner = '<img class="sprite" width="' + w + '" height="' + SPRITE_H + '" ' +
-      'src="' + spriteSrc(kind, s.lit) + '" srcset="' + spriteSrcset(kind, s.lit) + '" alt="">';
-    // Plaque = "monitoring is active" (payment). Independent of lighting on purpose.
-    if (s.you && stagePaid){
-      inner += '<img class="plaque" src="assets/plaque.png" srcset="assets/plaque.png 1x, assets/plaque@2x.png 2x" alt="">';
-    }
-    // Sign = the Builder's page is live. Independent of lighting and of payment.
-    if (s.you && stageSignVisible){
-      inner += '<img class="sign" src="assets/sign.png" srcset="assets/sign.png 1x, assets/sign@2x.png 2x" alt="">';
-    }
-    return '<div class="stage-shop" style="width:' + w + 'px" title="' + esc(s.name) + '">' + inner + '</div>';
+  // The hero takes a category sprite when one matches, else the generic
+  // daylight hero, which carries its own contact shadow for the paper ground.
+  // Competitors carry no category in the contract, so they take generic shops.
+  var shops = [{name:stageBusiness.name, lit:!!stageBusiness.lit, you:true,
+                kind:spriteKindFor(stageBusiness.category) || "hero-day"}]
+    .concat((stageCompetitors || []).map(function(c){
+      return {name:c.name, lit:!!c.lit, you:false, kind:"shop"};
+    }));
+  host.classList.add("paved");
+  host.innerHTML = shops.map(function(s){
+    var inner = '<img class="sprite" width="' + SPRITE_W + '" height="' + SPRITE_H + '" alt="" ' +
+      'src="/assets/' + s.kind + '-' + (s.lit ? "lit" : "dark") + '.png" srcset="' + spriteSrcset(s.kind, s.lit) + '">';
+    // Sign = the Builder's page is live. Plate = monitoring is paid for.
+    // Neither is a lighting channel, and lighting is never either of them.
+    if (s.you && stageSignVisible)
+      inner += '<img class="sign" src="/assets/sign.png" srcset="/assets/sign.png 1x, /assets/sign@2x.png 2x" alt="">';
+    if (s.you && stagePaid)
+      inner += '<img class="plate3d" width="56" height="35" src="/assets/plate-3d.png" ' +
+        'srcset="/assets/plate-3d.png 1x, /assets/plate-3d@2x.png 2x" alt="Vouch monitoring active">';
+    return '<div class="lot' + (s.lit ? " lit" : "") + '" data-n="' + esc(s.name) + '">' +
+      '<div class="shopfront">' + inner + '</div>' +
+      '<div class="nameplate"><span class="n"><span class="lamp"></span>' + esc(s.name) + '</span>' +
+      (s.you ? "this business" : "competitor") + '</div></div>';
   }).join("");
+  // one overshoot on each shop the moment it lights, and never again
+  shops.forEach(function(s){
+    if (s.lit && !litBefore[s.name]) settle(host.querySelector('[data-n="' + CSS.escape(s.name) + '"] .shopfront'));
+    litBefore[s.name] = s.lit;
+  });
 }
 
 function renderUrl(url){
   if (!url) return;
-  $("urlslot").outerHTML = '<a id="urlslot" class="fade" href="' + esc(safeHref(url)) + '" target="_blank" rel="noopener">' + esc(url) + '</a>';
-  $("deploy").style.borderColor = "var(--rule-hot)";
+  var el = agentEls.builder;
+  if (!el || el.body.querySelector("a")) return;
+  var a = document.createElement("a");
+  a.className = "mono"; a.href = safeHref(url); a.target = "_blank"; a.rel = "noopener";
+  a.textContent = url;
+  a.style.display = "block"; a.style.marginTop = "5px";
+  el.body.appendChild(a);
 }
 
-/* Live events send overlap.gap as a number of seconds; the fixture sends an
-   already-formatted string. Handle both, and never print a bare "0". */
-function formatGap(gap){
-  if (typeof gap === "number"){
-    if (gap <= 0) return "back to back";
-    return gap + (gap === 1 ? " second apart" : " seconds apart");
+/* Live events send epoch milliseconds; the fixture does too. The gap between
+   the two asks is computed from the timestamps, never asserted. */
+function formatTs(ts){ return typeof ts === "number" ? new Date(ts).toLocaleTimeString() : String(ts); }
+function formatGap(o){
+  if (typeof o.a.ts === "number" && typeof o.b.ts === "number"){
+    var s = Math.round(Math.abs(o.b.ts - o.a.ts) / 1000);
+    if (s < 1) return "back to back";
+    if (s < 120) return s + (s === 1 ? " second apart" : " seconds apart");
+    return Math.round(s / 60) + " minutes apart";
   }
-  return gap;
-}
-
-/* Live events send overlap.a.ts / overlap.b.ts as numeric epoch milliseconds;
-   the fixture sends an already-formatted string. Handle both. */
-function formatTs(ts){
-  if (typeof ts === "number") return new Date(ts).toLocaleTimeString();
-  return ts;
+  if (typeof o.gap === "number") return o.gap <= 0 ? "back to back" : o.gap + " seconds apart";
+  return o.gap ? String(o.gap) : "back to back";
 }
 
 function renderOverlap(o){
-  const A = o.a.sources, B = o.b.sources;
-  const setB = new Set(B), setA = new Set(A);
-  const shared = A.filter(s => setB.has(s));
-  const denom = Math.max(A.length, B.length);
-  const pct = denom ? (shared.length / denom) * 100 : 0;
+  var A = o.a.sources || [], B = o.b.sources || [];
+  var setA = new Set(A), setB = new Set(B);
+  var shared = A.filter(function(s){ return setB.has(s); });
+  var denom = Math.max(A.length, B.length);
+  var pct = denom ? (shared.length / denom) * 100 : 0;
 
-  $("nd-engine").textContent = o.engine;
-  $("nd-gap").textContent = formatGap(o.gap);
-  $("nd-q").innerHTML = "&ldquo;" + esc(o.query) + "&rdquo;";
-  $("nd-a-stamp").textContent = formatTs(o.a.ts);
-  $("nd-b-stamp").textContent = formatTs(o.b.ts);
+  $("probe-meta").innerHTML = '<b>' + esc(o.engine) + '</b> asked &ldquo;' + esc(o.query) + '&rdquo; twice, ' +
+    esc(formatGap(o)) + '. First ask ' + esc(formatTs(o.a.ts)) + ', second ' + esc(formatTs(o.b.ts)) + '.';
 
-  const li = (s, isShared) =>
-    '<li class="' + (isShared ? "shared" : "only") + '"><span class="box"></span>' + esc(s) + '</li>';
-  $("nd-a").innerHTML = A.map(s => li(s, setB.has(s))).join("");
-  $("nd-b").innerHTML = B.map(s => li(s, setA.has(s))).join("");
+  // shared sources sit on the same row and are joined by a rule; the rest hang off one side
+  var rows = shared.map(function(s){ return [s, s, true]; })
+    .concat(A.filter(function(s){ return !setB.has(s); }).map(function(s){ return [s, null, false]; }))
+    .concat(B.filter(function(s){ return !setA.has(s); }).map(function(s){ return [null, s, false]; }));
 
-  $("nd-pct").textContent = pct.toFixed(1) + "%";
-  $("nd-frac").textContent = shared.length + " of " + denom + " cited sources shared";
-  $("nd-cmp").innerHTML =
-    'Same top business both runs: <b style="color:var(--alert)">' + (o.top_business_same ? "yes" : "no") + '</b>';
-  $("nd").style.borderColor = "var(--alert)";
+  $("cols").innerHTML = '<div class="colhead a">First ask</div><div class="gap"></div><div class="colhead b">Second ask</div>' +
+    rows.map(function(r){
+      return '<div class="cell a' + (r[0] ? " on" : "") + '">' + esc(r[0] || "—") + '</div>' +
+        '<div class="link' + (r[2] ? " tied" : "") + '"><i></i></div>' +
+        '<div class="cell b' + (r[1] ? " on" : "") + '">' + esc(r[1] || "—") + '</div>';
+    }).join("");
+
+  // the percentage is set last, and it settles
+  setTimeout(function(){
+    $("pct").textContent = pct.toFixed(1) + "%";
+    $("pct-cap").textContent = shared.length + " of " + denom + " cited sources shared. Same top business both asks: " +
+      (o.top_business_same ? "yes" : "no") + ".";
+    settle($("pct"));
+  }, 220);
 }
 
 function renderCost(c){
-  $("c-engines").textContent   = money(c.engines);
+  $("cost-pending").hidden = true;
+  $("ledger").hidden = false;
+  $("c-engines").textContent = money(c.engines);
   $("c-decisions").textContent = money(c.decisions);
-  $("c-writing").textContent   = money(c.writing);
-  $("c-total").textContent     = money(c.engines + c.decisions + c.writing);
-  $("c-cap").textContent       = money(c.cap);
+  $("c-writing").textContent = money(c.writing);
+  $("c-total").textContent = money(c.engines + c.decisions + c.writing);
+  $("c-cap").textContent = money(c.cap);
+  settle($("c-total"));
 }
 
-/* ---------- the single entry point the backend will call ---------- */
+/* ---------- the single entry point the backend calls ---------- */
 function applyEvent(ev){
-  $("runid").textContent = ev.run_id;
+  $("runid").textContent = "run id " + ev.run_id;
+  if (ev.business && ev.business.name){
+    $("run-biz").textContent = ev.business.name;
+    $("runstat").dataset.on = "1";
+  }
   renderAgent(ev);
   if (ev.facts) renderFacts(ev.facts);
   if (ev.score !== null && ev.score !== undefined) renderScore(ev.score, ev.grade);
   if (ev.rank) renderRank(ev);
-  if (ev.competitors && ev.competitors.length) renderStreet(ev);
   if (ev.url) renderUrl(ev.url);
-  if (ev.overlap) renderOverlap(ev.overlap);
+  if (ev.overlap){ renderOverlap(ev.overlap); setPlate(ev.overlap.engine, ev.ts); }
+  else if (ev.facts && ev.facts.length) setPlate(ev.facts[0].engine, ev.ts);
   if (ev.cost) renderCost(ev.cost);
 
-  // -- street-scene sprites (lighting / plaque / sign are three separate channels) --
+  // -- street: lighting / sign / plate are three separate channels --
   if (ev.business) stageBusiness = ev.business;
   if (ev.competitors && ev.competitors.length) stageCompetitors = ev.competitors;
   if (ev.agent === "revenue" && ev.state === "paid") stagePaid = true;
   if (ev.agent === "builder" && ev.state === "done" && ev.url) stageSignVisible = true;
-  if (stageBusiness) renderStage();
+  if (stageBusiness) renderStreet();
+
+  if (ev.agent === "orchestrator" && ev.state === "done"){ setRunWord("complete", "complete"); stopClock(); }
+  else if (ev.state === "failed"){ setRunWord("failed", "failed"); stopClock(); }
+  else if (!document.body.classList.contains("awaiting")) setRunWord("running", "running");
 }
-window.applyEvent = applyEvent;   // live feed swaps EVENTS playback for calls to this
+window.applyEvent = applyEvent;   // the live feed swaps fixture playback for calls to this
 
 /* ---------- playback ---------- */
-function stop(){ timers.forEach(clearTimeout); timers = []; if (clockTimer) clearInterval(clockTimer); }
+function stopClock(){ if (clockTimer){ clearInterval(clockTimer); clockTimer = null; } }
+function stop(){ timers.forEach(clearTimeout); timers = []; stopClock(); }
 
 function reset(){
   stop();
   livePoll.stop();
-  facts = [];
-  factsReceived = 0;
+  facts = []; factsReceived = 0; pendingScore = null; litBefore = {};
   stageBusiness = null; stageCompetitors = []; stagePaid = false; stageSignVisible = false;
-  const stageHost = $("stageShops");
-  if (stageHost) stageHost.innerHTML = "";
-  $("led").className = "led";
-  $("runid").textContent = "run — idle";
-  $("clock").textContent = "t+00.0s";
-  $("score").textContent = "—";
-  $("letter").textContent = "—"; $("letter").style.color = "var(--ink-3)";
-  $("arc").style.strokeDashoffset = "490"; $("arc").style.stroke = "#63777C";
-  $("gradenote").textContent = "Awaiting probe. Score is computed in code from ground-truth diffs, never graded by a model.";
-  $("facts").innerHTML = '<tr><td colspan="5" class="empty">No probes returned yet.</td></tr>';
-  $("factcount").textContent = "0 found";
-  $("rankline").innerHTML = '<span style="color:var(--ink-3);font-size:18px">Rank pending.</span>';
-  $("street").innerHTML = "";
-  const slot = $("urlslot");
-  if (slot) slot.outerHTML = '<span class="pending" id="urlslot">not yet built</span>';
-  $("deploy").style.borderColor = "var(--rule)";
-  $("nd").style.borderColor = "var(--rule-hot)";
-  $("nd-pct").textContent = "—"; $("nd-frac").innerHTML = "&nbsp;";
-  $("nd-a").innerHTML = '<li class="only"><span class="box"></span>awaiting probe</li>';
-  $("nd-b").innerHTML = '<li class="only"><span class="box"></span>awaiting probe</li>';
-  ["c-engines","c-decisions","c-writing","c-total"].forEach(i => $(i).textContent = "$0.00");
-  AGENTS.forEach(a => {
-    const el = agentEls[a.id];
-    el.row.className = "agent";
-    el.msg.textContent = "idle";
-    el.state.dataset.s = "idle"; el.state.textContent = "idle";
+  document.body.classList.remove("awaiting");
+  $("row").classList.remove("paved");
+  $("row").innerHTML = '<p class="none">The street appears when the first probe returns.</p>';
+  $("rank").textContent = "";
+  $("runid").textContent = "run id not assigned";
+  $("runstat").dataset.on = "0";
+  $("run-biz").textContent = ""; $("clock").textContent = "00:00";
+  $("run-word").textContent = "idle"; $("dot").dataset.s = "idle";
+  setPlate(null, null);
+  $("blank").hidden = false; $("figure").hidden = true; $("sheetwrap").hidden = true;
+  $("score").textContent = ""; $("grade").textContent = ""; $("factsum").textContent = "";
+  $("facts").innerHTML = "";
+  $("probe-meta").textContent = "Not yet run.";
+  $("cols").innerHTML = '<div class="colhead a">First ask</div><div class="gap"></div><div class="colhead b">Second ask</div>';
+  $("pct").textContent = "";
+  $("pct-cap").textContent = "Source overlap is measured once the same prompt has been asked twice.";
+  $("ledger").hidden = true; $("cost-pending").hidden = false;
+  AGENTS.forEach(function(a){
+    var el = agentEls[a.id];
+    el.row.dataset.b = "idle";
+    el.body.innerHTML = '<div class="ms">idle</div>';
+    el.msg = el.body.querySelector(".ms");
+    el.word.textContent = "idle";
   });
   $("btn-run").disabled = false;
   $("btn-reset").disabled = false;
 }
 
+function startClock(){
+  t0 = performance.now();
+  stopClock();
+  clockTimer = setInterval(function(){ $("clock").textContent = mmss(performance.now() - t0); }, 250);
+}
+
 function play(){
   reset();
   $("btn-run").disabled = true;
-  $("led").className = "led live";
-  t0 = performance.now();
-  clockTimer = setInterval(() => {
-    $("clock").textContent = "t+" + ((performance.now() - t0) / 1000).toFixed(1).padStart(4, "0") + "s";
-  }, 100);
+  $("btn-run").textContent = "Running";
+  $("runstat").dataset.on = "1";
+  setRunWord("running · illustrative playback", "running");
+  startClock();
 
-  let acc = 180;
-  EVENTS.forEach((ev, i) => {
-    if (i > 0){
-      const gap = (EVENTS[i].ts - EVENTS[i - 1].ts) * 1000 / SPEED;
-      acc += Math.min(MAX_MS, Math.max(MIN_MS, gap));
-    }
-    timers.push(setTimeout(() => {
+  var acc = 180;
+  EVENTS.forEach(function(ev, i){
+    if (i > 0) acc += Math.min(MAX_MS, Math.max(MIN_MS, (EVENTS[i].ts - EVENTS[i-1].ts) * 1000 / SPEED));
+    timers.push(setTimeout(function(){
       applyEvent(ev);
       if (i === EVENTS.length - 1){
-        $("led").className = "led done";
-        $("btn-run").disabled = false;
-        clearInterval(clockTimer);
+        $("btn-run").disabled = false; $("btn-run").textContent = "Run";
+        stopClock();
       }
     }, acc));
   });
 }
 
-document.addEventListener("keydown", e => {
+document.addEventListener("keydown", function(e){
   if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city")) runRequested();
 });
 
-/* ?demo=replay — autoplay for the wifi-off backup path */
-if (new URLSearchParams(location.search).get("demo") === "replay"){
-  setTimeout(play, 400);
-}
+/* ?demo=replay, autoplay for the wifi-off backup path */
+if (new URLSearchParams(location.search).get("demo") === "replay") setTimeout(play, 400);
 
-/* ============================================================
-   EVENT POLLING — shared by ?run=<runId> page loads and by a
-   live run kicked off from the Run button.
-   Fails loudly: a bad run id is refused, a fetch error is logged
-   and retried, never silently swallowed or papered over with a
-   guessed value.
-   ============================================================ */
+/* ===========================================================================
+   EVENT POLLING — shared by ?run=<runId> page loads and by a live run kicked
+   off from the Run button. Fails loudly: a bad run id is refused, a fetch
+   error is logged and retried, never silently swallowed or papered over with
+   a guessed value.
+   =========================================================================== */
 function parseEventRow(row){
-  let payload;
+  var payload;
   try{
     payload = row && row.payload_json ? JSON.parse(row.payload_json) : {};
   }catch(e){
@@ -1032,91 +960,80 @@ function parseEventRow(row){
   if (!payload || typeof payload !== "object") payload = {};
   // row fields win over payload fields for the envelope keys.
   return Object.assign({}, payload, {
-    run_id: row.run_id,
-    ts: row.ts,
-    agent: row.agent,
-    state: row.state,
-    message: row.message
+    run_id: row.run_id, ts: row.ts, agent: row.agent, state: row.state, message: row.message
   });
 }
 
 /* Stop condition: an orchestrator failure, or the outreach agent reaching
    done/failed (the Slack approval that finishes outreach arrives well after
-   orchestrator reports done — polling must outlive that), or 10 minutes of
+   orchestrator reports done, so polling must outlive that), or 10 minutes of
    silence since the last event, whichever comes first. */
 function startPolling(runId){
-  const POLL_MS = 2000;
-  const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
-  let since = 0;
-  let stopped = false;
-  let timer = null;
-  let lastEventAt = Date.now();
-  let bizNameApplied = false;
+  var POLL_MS = 2000;
+  var IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+  var since = 0, stopped = false, timer = null;
+  var lastEventAt = Date.now();
+  var bizNameApplied = false;
 
-  livePoll.stop = function(){
-    stopped = true;
-    if (timer) clearTimeout(timer);
-  };
+  livePoll.stop = function(){ stopped = true; if (timer) clearTimeout(timer); };
 
   async function poll(){
     if (stopped) return;
 
     if (Date.now() - lastEventAt > IDLE_TIMEOUT_MS){
       stopped = true;
-      console.error("Vouch dashboard: polling stopped — no events for 10 minutes");
-      $("led").className = "led";
+      console.error("Vouch dashboard: polling stopped, no events for 10 minutes");
+      setRunWord("stalled, no events for 10 minutes", "failed");
+      stopClock();
       return;
     }
 
     try{
-      const res = await fetch(
+      var res = await fetch(
         "/api/events/" + encodeURIComponent(runId) + "?since=" + encodeURIComponent(since),
         { credentials: "same-origin" }
       );
       if (!res.ok){
         console.error("Vouch dashboard: /api/events poll failed:", res.status);
       } else {
-        const body = await res.json();
-        // The endpoint returns { events: [...] } — never a bare array.
-        const rows = body && Array.isArray(body.events) ? body.events : null;
+        var body = await res.json();
+        // The endpoint returns { events: [...] }, never a bare array.
+        var rows = body && Array.isArray(body.events) ? body.events : null;
         if (!rows){
           console.error("Vouch dashboard: /api/events returned an unexpected shape", body);
         } else {
-          rows.forEach(row => {
+          rows.forEach(function(row){
             // `since` is the last event id seen (the row's integer id), not a
-            // timestamp — the endpoint pages by id and returns rows ordered by id.
+            // timestamp. The endpoint pages by id and returns rows ordered by id.
             if (typeof row.id === "number" && row.id > since) since = row.id;
-            const ev = parseEventRow(row);
+            var ev = parseEventRow(row);
             if (!ev) return;
             lastEventAt = Date.now();
             window.applyEvent(ev);
 
             if (!bizNameApplied && ev.agent === "auditor" && ev.business && ev.business.name){
-              const bizInput = $("in-biz");
+              var bizInput = $("in-biz");
               if (bizInput) bizInput.value = ev.business.name;
               bizNameApplied = true;
             }
 
-            const orchestratorDone = ev.agent === "orchestrator" && ev.state === "done";
-            const orchestratorFailed = ev.agent === "orchestrator" && ev.state === "failed";
-            // outreach settles well after the orchestrator reports done — keep
+            var orchestratorDone = ev.agent === "orchestrator" && ev.state === "done";
+            var orchestratorFailed = ev.agent === "orchestrator" && ev.state === "failed";
+            // outreach settles well after the orchestrator reports done, so keep
             // polling quietly through that gap (bounded by the idle timeout).
-            const outreachSettled = ev.agent === "outreach" &&
+            var outreachSettled = ev.agent === "outreach" &&
               (ev.state === "done" || ev.state === "failed" || ev.state === "paid");
 
             if (orchestratorDone){
-              // Mark the run complete in the header — stop the elapsed-time
-              // clock — but keep polling for outreach's later done/failed/paid.
-              $("led").className = "led done";
-              if (clockTimer){ clearInterval(clockTimer); clockTimer = null; }
+              // Mark the run complete in the masthead and stop the elapsed clock,
+              // but keep polling for outreach's later done/failed/paid.
+              setRunWord("complete", "complete");
+              stopClock();
             }
-            if (orchestratorFailed){
-              stopped = true;
-              $("led").className = "led";
-            }
+            if (orchestratorFailed){ stopped = true; setRunWord("failed", "failed"); stopClock(); }
             if (outreachSettled){
               stopped = true;
-              if (ev.state !== "failed") $("led").className = "led done";
+              if (ev.state !== "failed") stopClock();
             }
           });
         }
@@ -1130,28 +1047,27 @@ function startPolling(runId){
   poll();
 }
 
-/* ============================================================
-   LIVE RUN — every Run button press (public; throttled server-side)
-   Starts a run via POST /api/run, reads the ndjson stream until
-   the run id shows up, then hands off to the shared poller.
-   ============================================================ */
-function showRunStatus(text){
-  $("runid").textContent = text;
-  $("led").className = "led";
-}
+/* ===========================================================================
+   LIVE RUN. Every Run press (public; throttled server-side). Starts a run via POST /api/run,
+   reads the ndjson stream until the run id shows up, then hands off to the
+   shared poller.
+   =========================================================================== */
+function showRunStatus(text){ setRunWord(text, "failed"); stopClock(); }
 
 async function runLive(){
-  stop();          // halt any fixture playback in progress
+  stop();           // halt any fixture playback in progress
   livePoll.stop();  // halt any previous poll loop
   reset();
   $("btn-run").disabled = true;
-  $("led").className = "led live";
-  $("runid").textContent = "run — starting";
+  $("btn-run").textContent = "Running";
+  $("run-biz").textContent = ($("in-biz").value || "").trim();
+  setRunWord("starting", "running");
+  startClock();
 
-  const name = ($("in-biz").value || "").trim();
-  const city = ($("in-city").value || "").trim();
+  var name = ($("in-biz").value || "").trim();
+  var city = ($("in-city").value || "").trim();
 
-  let res;
+  var res;
   try{
     res = await fetch("/api/run", {
       method: "POST",
@@ -1160,60 +1076,58 @@ async function runLive(){
     });
   }catch(e){
     console.error("Vouch dashboard: /api/run request failed:", e);
-    showRunStatus("network error starting run");
-    $("btn-run").disabled = false;
+    showRunStatus("could not reach the server");
+    $("btn-run").disabled = false; $("btn-run").textContent = "Run";
     return;
   }
 
   if (!res.ok){
-    let msg;
-    if (res.status === 429){
-      let err = "";
-      try{ err = (await res.json()).error || ""; }catch(e){}
-      msg = err === "daily_limit_reached" ? "daily run limit reached — try again tomorrow" : "too many runs — try again later";
-    }
-    else msg = "run failed (status " + res.status + ")";
+    var err = "";
+    if (res.status === 429){ try{ err = (await res.json()).error || ""; }catch(e){} }
+    var msg = err === "daily_limit_reached" ? "the daily run limit is reached, try again tomorrow"
+      : res.status === 429 ? "too many runs, try again later"
+      : "the server refused the run (status " + res.status + ")";
     console.error("Vouch dashboard: /api/run rejected the request:", res.status);
     showRunStatus(msg);
-    $("btn-run").disabled = false;
+    $("btn-run").disabled = false; $("btn-run").textContent = "Run";
     return;
   }
 
   if (!res.body){
     console.error("Vouch dashboard: /api/run response had no readable body");
-    showRunStatus("no stream from server");
-    $("btn-run").disabled = false;
+    showRunStatus("the server sent no event stream");
+    $("btn-run").disabled = false; $("btn-run").textContent = "Run";
     return;
   }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  let runIdSeen = false;
+  var reader = res.body.getReader();
+  var decoder = new TextDecoder();
+  var buf = "", runIdSeen = false;
 
   try{
-    // Keep reading until the server closes the stream (done or cancellation) —
-    // heartbeats are ignored, the runId line hands off to the shared poller.
+    // Keep reading until the server closes the stream (done or cancellation).
+    // Heartbeats are ignored; the runId line hands off to the shared poller.
     while (true){
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx;
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buf += decoder.decode(chunk.value, { stream: true });
+      var idx;
       while ((idx = buf.indexOf("\n")) >= 0){
-        const line = buf.slice(0, idx).trim();
+        var line = buf.slice(0, idx).trim();
         buf = buf.slice(idx + 1);
         if (!line) continue;
-        let msg;
-        try{ msg = JSON.parse(line); }catch(e){
+        var msg2;
+        try{ msg2 = JSON.parse(line); }catch(e){
           console.error("Vouch dashboard: unparsable ndjson line from /api/run, skipping", e);
           continue;
         }
-        if (!runIdSeen && msg && msg.runId){
+        if (!runIdSeen && msg2 && msg2.runId){
           runIdSeen = true;
-          history.replaceState(null, "", "?run=" + encodeURIComponent(msg.runId));
-          $("runid").textContent = msg.runId;
-          startPolling(msg.runId);
-        } else if (msg && msg.done){
+          history.replaceState(null, "", "?run=" + encodeURIComponent(msg2.runId));
+          $("runid").textContent = "run id " + msg2.runId;
+          setRunWord("running", "running");
+          startPolling(msg2.runId);
+        } else if (msg2 && msg2.done){
           console.log("Vouch dashboard: /api/run stream reported done");
         }
         // heartbeat lines are otherwise ignored
@@ -1221,10 +1135,11 @@ async function runLive(){
     }
   }catch(e){
     console.error("Vouch dashboard: /api/run stream errored:", e);
-    showRunStatus("stream error");
+    showRunStatus("the event stream broke");
   }
 
   $("btn-run").disabled = false;
+  $("btn-run").textContent = "Run";
 }
 
 /* Every Run is a real run on Brainbase. The fixture playback stays
@@ -1236,13 +1151,13 @@ function runRequested(){
 $("btn-run").addEventListener("click", runRequested);
 $("btn-reset").addEventListener("click", reset);
 
-/* ============================================================
-   LIVE MODE — ?run=<runId> on page load
-   Polls the Worker's event feed instead of playing the fixture.
-   ============================================================ */
+/* ===========================================================================
+   LIVE MODE. ?run=<runId> on page load. Polls the Worker's event feed instead
+   of playing the fixture.
+   =========================================================================== */
 (function liveMode(){
-  const runId = new URLSearchParams(location.search).get("run");
-  if (!runId) return; // fixture demo mode, untouched
+  var runId = new URLSearchParams(location.search).get("run");
+  if (!runId) return;   // fixture demo mode, untouched
 
   if (!/^[0-9a-f-]{36}$/.test(runId)){
     console.error("Vouch dashboard: ignoring malformed run id in URL:", runId);
@@ -1251,8 +1166,9 @@ $("btn-reset").addEventListener("click", reset);
 
   // Live mode owns the console; fixture playback controls don't apply.
   $("btn-run").disabled = true;
-  $("runid").textContent = runId;
-  $("led").className = "led live";
+  $("runid").textContent = "run id " + runId;
+  setRunWord("running", "running");
+  startClock();
   startPolling(runId);
 })();
 </script>

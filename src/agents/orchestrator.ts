@@ -153,7 +153,7 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
     // score so the dashboard prints the server's band, never its own.
     businessId = audit.businessId;
     events.add('auditor', 'done', headline, {
-      business: { slug: audit.slug, name: audit.facts.name, lit: false },
+      business: { slug: audit.slug, name: audit.facts.name, lit: false, category: audit.facts.category },
       score: audit.score,
       grade: audit.grade,
       overlap: audit.overlap ?? undefined,
@@ -174,7 +174,7 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
         built.published
           ? `Published — health check ${built.healthStatus ?? 'no response'}.`
           : 'Page generated but not published.',
-        { url: built.url, business: { slug: audit.slug, name: audit.facts.name, lit: false } });
+        { url: built.url, business: { slug: audit.slug, name: audit.facts.name, lit: false, category: audit.facts.category } });
       await say(env, 'builder', `Live: ${built.url}`);
       if (issueId) await moveIssue(env, issueId, env.LINEAR_STATE_DEPLOYED);
     } catch (e) {
@@ -266,6 +266,10 @@ function worstFact(audit: AuditorResult): string {
   if (wrong) return `${wrong.engine} says ${wrong.factKey}: "${wrong.stated}" — it's "${wrong.expected}".`;
   const missing = audit.verdicts.find((v) => v.verdict === 'missing');
   if (missing) return `${missing.engine} has no ${missing.factKey} at all.`;
+  const disputed = audit.verdicts.find((v) => v.verdict === 'disputed');
+  if (disputed) {
+    return `${disputed.engine} and Google disagree on ${disputed.factKey}: "${disputed.stated}" vs "${disputed.expected}" — not graded.`;
+  }
   return 'No factual errors found.';
 }
 
