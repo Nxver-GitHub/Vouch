@@ -456,7 +456,23 @@ function fillTemplate(html: string, tokens: Readonly<Record<string, string>>): s
     out = out.replaceAll(`{{${key}}}`, escapeHtml(value));
   }
   // Unused numbered slots (or anything we missed) degrade to blank, never raw.
-  return out.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+  const blanked = out.replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+  return dropEmptyFaqSlots(blanked);
+}
+
+/**
+ * The template carries six numbered FAQ slots; the audit now asks five
+ * questions. An unfilled slot must not ship as an empty heading or as a
+ * schema.org Question with an empty name (invalid FAQPage). Both shapes are
+ * exactly what the template emits after blanking, so the match is literal.
+ */
+function dropEmptyFaqSlots(html: string): string {
+  return html
+    .replace(/\s*<div class="q"><\/div>\s*<p class="a"><\/p>/g, '')
+    .replace(
+      /,?\s*\{ "@type":"Question","name":"","acceptedAnswer":\{"@type":"Answer","text":""\} \}/g,
+      '',
+    );
 }
 
 /**
