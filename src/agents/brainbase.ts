@@ -127,7 +127,8 @@ async function runOnBrainbase(env: Env, runId: string, agentId: string, input: S
       await emit(env, runId, 'orchestrator', 'failed', `Brainbase refused the run: ${created.error}`);
       return;
     }
-    await emit(env, runId, 'orchestrator', 'working', 'Started on Brainbase.');
+    // The saved-runs list reads the business from this first event.
+    await emit(env, runId, 'orchestrator', 'working', `Started on Brainbase for ${input.name}, ${input.city}.`);
 
     const roles = roleMap(env);
     const deadline = Date.now() + RUN_DEADLINE_MS;

@@ -103,6 +103,15 @@ a:hover{text-decoration-color:var(--strong);}
   padding:11px 12px; min-width:0;
 }
 .f input::placeholder{color:var(--ink-3);}
+.f > span .opt{font-style:normal; color:var(--ink-3);}
+.saved{list-style:none; margin:0; padding:0; border-top:1px solid var(--strong);}
+.saved li{border-bottom:1px solid var(--strong);}
+.saved a{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 16px; padding:12px 2px; color:var(--ink); text-decoration:none;}
+.saved a:hover, .saved a:focus-visible{background:var(--surface);}
+.saved .who{font-weight:600; overflow-wrap:anywhere;}
+.saved .when{font-size:13px; color:var(--ink-2); white-space:nowrap;}
+.saved .last{grid-column:1 / -1; font-size:13px; color:var(--ink-2); overflow-wrap:anywhere;}
+.saved .none{padding:12px 2px; color:var(--ink-2);}
 .f input:focus-visible{border-color:var(--ink);}
 .btn{
   font:450 15px/1 var(--sans); padding:12px 26px; border-radius:0; cursor:pointer;
@@ -361,8 +370,15 @@ body.awaiting .ag[data-b="working"] .tick::after{animation:none; transform:trans
       <input id="in-biz" value="Golden Boy Pizza" placeholder="Name of a local business" autocomplete="off"></label>
     <label class="f"><span>City</span>
       <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off"></label>
+    <label class="f"><span>Access token <em class="opt">optional &middot; shows saved runs</em></span>
+      <input id="in-token" type="password" placeholder="Leave empty to just run" autocomplete="off"></label>
     <button class="btn" id="btn-run">Run</button>
     <button class="btn sub" id="btn-reset">Reset</button>
+  </section>
+
+  <section class="sec" id="saved" hidden>
+    <h2>Saved runs<span class="aside">newest first &middot; select one to replay it</span></h2>
+    <ol class="saved" id="saved-list"></ol>
   </section>
 
   <section class="sec">
@@ -938,6 +954,7 @@ function play(){
 
 document.addEventListener("keydown", function(e){
   if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city")) runRequested();
+  if (e.key === "Enter" && e.target.id === "in-token") loadSaved();
 });
 
 /* ?demo=replay, autoplay for the wifi-off backup path */
@@ -1150,6 +1167,62 @@ function runRequested(){
 
 $("btn-run").addEventListener("click", runRequested);
 $("btn-reset").addEventListener("click", reset);
+
+/* ===========================================================================
+   SAVED RUNS. The access token is optional: runs are public to start, but the
+   list of past runs is operator-only, so /api/runs checks the token server
+   side. The token lives in memory and, best-effort, in sessionStorage — never
+   in the URL, never logged. Every field from the server is escaped.
+   =========================================================================== */
+function tokenValue(){ return ($("in-token") && $("in-token").value || "").trim(); }
+
+function runLabel(r){
+  var m = /^Started on Brainbase for (.+)\.$/.exec(r.first_message || "");
+  return m ? m[1] : "Run " + String(r.id).slice(0, 8);
+}
+
+function renderSaved(runs){
+  var list = $("saved-list");
+  if (!runs.length){ list.innerHTML = '<li class="none">No saved runs yet.</li>'; return; }
+  list.innerHTML = runs.map(function(r){
+    var when = r.started_at ? new Date(Number(r.started_at)).toLocaleString() : "";
+    var last = r.last_agent ? (r.last_agent + " \u00b7 " + (r.last_state || "") + " \u2014 " + (r.last_message || "")) : (r.status || "");
+    return '<li><a href="?run=' + encodeURIComponent(r.id) + '">' +
+      '<span class="who">' + esc(runLabel(r)) + '</span>' +
+      '<span class="when">' + esc(when) + '</span>' +
+      '<span class="last">' + esc(last) + '</span></a></li>';
+  }).join("");
+}
+
+async function loadSaved(){
+  var section = $("saved"), list = $("saved-list"), token = tokenValue();
+  if (!token){ section.hidden = true; return; }
+  section.hidden = false;
+  try{
+    var res = await fetch("/api/runs", { headers: { authorization: "Bearer " + token }, credentials: "same-origin" });
+    if (res.status === 401){ list.innerHTML = '<li class="none">That access token was not accepted.</li>'; return; }
+    if (!res.ok){ list.innerHTML = '<li class="none">Saved runs could not be loaded (status ' + esc(res.status) + ').</li>'; return; }
+    var body = await res.json();
+    renderSaved(body && Array.isArray(body.runs) ? body.runs : []);
+  }catch(e){
+    console.error("Vouch dashboard: /api/runs failed:", e);
+    list.innerHTML = '<li class="none">Saved runs could not be loaded.</li>';
+  }
+}
+
+(function tokenPersistence(){
+  var input = $("in-token");
+  if (!input) return;
+  try{ var saved = sessionStorage.getItem("vouch_run_token"); if (saved) input.value = saved; }
+  catch(e){ /* storage blocked: the token just won't survive a reload */ }
+  var timer = null;
+  input.addEventListener("input", function(){
+    try{ sessionStorage.setItem("vouch_run_token", input.value); }catch(e){}
+    clearTimeout(timer);
+    timer = setTimeout(loadSaved, 500);
+  });
+  if (input.value) loadSaved();
+})();
 
 /* ===========================================================================
    LIVE MODE. ?run=<runId> on page load. Polls the Worker's event feed instead
