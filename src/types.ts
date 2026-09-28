@@ -59,7 +59,8 @@ export type AgentEvent = {
   ts: number;
   agent: AgentName;
   state: AgentState | string;
-  business?: { slug: string; name: string; lit: boolean };
+  /** `category` is Places' primaryTypeDisplayName (e.g. "Pizza Restaurant"); the dashboard picks a sprite from it. */
+  business?: { slug: string; name: string; lit: boolean; category?: string | null };
   /** "shops down the street" — lit = this competitor was cited, you weren't */
   competitors?: Array<{ name: string; lit: boolean }>;
   score?: number;

@@ -678,7 +678,7 @@ export async function runAuditor(env: Env, input: AuditorInput): Promise<Auditor
     state: 'working',
     message: `${scored.score}/100 (${scored.grade}) from ${graded.length} verdicts, ${review.length} disputed`,
     score: scored.score,
-    business: { slug: business.slug, name: business.facts.name, lit },
+    business: { slug: business.slug, name: business.facts.name, lit, category: business.facts.category },
     // types.ts calls this panel "the wrong/missing sheet" — send what is
     // actually wrong, not every verdict we formed.
     // Wrong, missing AND disputed: everything the owner should look at.
