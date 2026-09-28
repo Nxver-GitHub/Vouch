@@ -144,7 +144,8 @@ h1.claim{
 .lot{width:120px; flex:0 0 auto; position:relative; z-index:1;}
 .shopfront{position:relative; height:180px;}
 .shopfront img.sprite{display:block; width:120px; height:180px;}
-.shopfront .sign{position:absolute; left:-30px; bottom:2px; width:38px; height:48px;}
+/* A-board on the pavement to the RIGHT of the door, inside the well: at left:-30px the first shop's sign was clipped by the well edge. */
+.shopfront .sign{position:absolute; right:-14px; bottom:2px; width:38px; height:48px;}
 /* the benchmark plate, mounted on the facade beside the door. It carries its
    own rendered shadow, so it takes no CSS shadow and no border. */
 .shopfront .plate3d{position:absolute; left:50px; top:100px; width:56px; height:35px;}
