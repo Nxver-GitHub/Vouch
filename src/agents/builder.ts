@@ -109,13 +109,18 @@ function isStringArray(v: unknown, length: number): v is string[] {
 }
 
 function parseCopy(text: string, faqCount: number): BuilderCopy {
-  // Defensive: prompt forbids fences, but strip them if present anyway.
-  const cleaned = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  // Defensive: the prompt forbids fences and preamble, but models still add
+  // both occasionally ("Here is the JSON:" ... ```json ... ```). Take the
+  // outermost object literal and ignore anything around it. If there is no
+  // object at all, fail loudly with a short, prose-only excerpt for the log.
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  const cleaned = start >= 0 && end > start ? text.slice(start, end + 1) : text.trim();
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    throw new Error('builder: claude copy was not valid JSON');
+    throw new Error(`builder: claude copy was not valid JSON (starts: "${text.trim().slice(0, 80)}")`);
   }
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error('builder: claude copy was not a JSON object');

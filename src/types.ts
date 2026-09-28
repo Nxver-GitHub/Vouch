@@ -17,6 +17,8 @@ export type Env = {
   AGENT_STEP_LIMIT: string;
   SLACK_OPS_CHANNEL: string;
   RESEND_FROM: string;
+  /** The ONLY address outreach may send to. Empty means outreach refuses to draft. */
+  DEMO_OWNER_EMAIL: string;
   LINEAR_TEAM_ID: string;
   LINEAR_STATE_TODO: string;
   LINEAR_STATE_AUDITED: string;
@@ -43,7 +45,7 @@ export type AgentName =
   | 'revenue'
   | 'outreach';
 
-export type AgentState = 'idle' | 'working' | 'done' | 'failed';
+export type AgentState = 'idle' | 'working' | 'waiting' | 'done' | 'paid' | 'failed';
 
 /**
  * The dashboard animates off this. design/dashboard.html consumes it via

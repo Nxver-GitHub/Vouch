@@ -19,6 +19,7 @@ import type { Env, AgentEvent, AgentName } from '../types';
 import { runAuditor, type AuditorResult } from './auditor';
 import { createOffer } from './revenue';
 import { runBuilder } from './builder';
+import { draftOutreach } from './outreach';
 import { postAs } from '../lib/slack';
 import { createIssue, moveIssue } from '../lib/linear';
 import { safeError } from '../lib/security';
@@ -188,7 +189,9 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
       runId,
     });
 
+    let paymentUrl: string | null = null;
     if (offer.ok) {
+      paymentUrl = offer.offer.paymentUrl;
       events.add('revenue', 'done', `Payment link ready — $39/mo monitoring.`, {
         url: offer.offer.paymentUrl,
       });
@@ -196,6 +199,30 @@ async function runPipeline(env: Env, runId: string, input: StartRunInput): Promi
       if (issueId) await moveIssue(env, issueId, env.LINEAR_STATE_OFFERED);
     } else {
       events.add('revenue', 'failed', `Offer failed: ${offer.error}`);
+    }
+
+    /* ---------------------------- Outreach ---------------------------- */
+    // A failed draft must not abort the run — the audit, the page and the offer
+    // all stand on their own. Fail loudly in the stream, then carry on.
+    events.add('outreach', 'working', 'Drafting owner email.');
+    try {
+      const draft = await draftOutreach(env, {
+        runId,
+        businessId: audit.businessId,
+        businessName: audit.facts.name,
+        slug: audit.slug,
+        score: audit.score,
+        grade: audit.grade,
+        worstFact: headline,
+        pageUrl,
+        paymentUrl,
+      });
+      events.add('outreach', 'waiting', `Draft posted to Slack — awaiting approval (to ${draft.to}).`);
+      if (!draft.slackOk) {
+        events.add('outreach', 'failed', `Slack post failed: ${draft.slackError ?? 'unknown error'}`);
+      }
+    } catch (e) {
+      events.add('outreach', 'failed', `Draft failed: ${safeError(e)}`);
     }
 
     // The ledger is the only honest source for the cost strip: every paid call

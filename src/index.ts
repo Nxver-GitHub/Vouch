@@ -15,6 +15,7 @@ import { Hono } from 'hono';
 import type { Env } from './types';
 import { handleWebhook } from './agents/revenue';
 import { startRun } from './agents/orchestrator';
+import { approveOutreach } from './agents/outreach';
 import {
   requireRunToken,
   throttle,
@@ -244,9 +245,16 @@ app.post('/slack/interactions', async (c) => {
   try {
     const payload = parseInteraction(raw);
     const action = payload.actions?.[0];
-    if (action?.action_id === 'approve' && payload.response_url) {
+    if (action?.action_id === 'approve' && typeof action.value === 'string' && payload.response_url) {
+      // The button value is a business id, never a recipient. approveOutreach
+      // is the idempotent gate, so a Slack retry cannot send a second email.
+      const businessId = action.value;
+      const userId = payload.user?.id ?? 'slack';
+      const responseUrl = payload.response_url;
       c.executionCtx.waitUntil(
-        respondToInteraction(payload.response_url, '✅ Approved — sending outreach.'),
+        approveOutreach(c.env, businessId, userId).then((result) =>
+          respondToInteraction(responseUrl, approvalText(result, userId)),
+        ),
       );
     }
   } catch {
@@ -265,7 +273,23 @@ app.get('/approve', async (c) => {
   const valid = await verifyApproveToken(c.env.SLACK_SIGNING_SECRET, businessId, exp, token);
   if (!valid) return c.text('invalid or expired link', 403);
 
-  return c.html(`<p>Approved ${escapeHtml(businessId)} — outreach sending.</p>`);
+  // Awaited, not waitUntil: this is an ordinary request and the page must
+  // report the real outcome. Refreshing the link re-enters the same idempotent
+  // gate, so the second visit reports "already handled" and sends nothing.
+  const result = await approveOutreach(c.env, businessId, 'link');
+  return c.html(`<p>${escapeHtml(approvalText(result, null))}</p>`);
 });
+
+/** One phrasing for both approval surfaces. Every value is redacted upstream. */
+function approvalText(
+  result: Awaited<ReturnType<typeof approveOutreach>>,
+  userId: string | null,
+): string {
+  if (!result.ok) return `❌ Approval failed: ${result.error}`;
+  if (!result.transitioned) return 'Already handled — no email sent.';
+  const by = userId ? ` by <@${userId}>` : '';
+  if (result.sent) return `✅ Approved${by} — email sent to ${result.to ?? 'the owner'}.`;
+  return `❌ Email failed: ${result.error ?? 'unknown error'}`;
+}
 
 export default app;

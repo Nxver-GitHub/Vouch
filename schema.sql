@@ -116,3 +116,22 @@ CREATE INDEX IF NOT EXISTS idx_events_run       ON events(run_id, ts);
 CREATE INDEX IF NOT EXISTS idx_audits_run       ON audits(run_id);
 CREATE INDEX IF NOT EXISTS idx_payments_link    ON payments(stripe_link_id);
 CREATE INDEX IF NOT EXISTS idx_runs_business    ON runs(business_id);
+
+-- Outreach drafts. One row per business; the approve transition is the single
+-- idempotent gate before any email leaves (draft -> approved -> sent|failed).
+CREATE TABLE IF NOT EXISTS outreach (
+  id           TEXT PRIMARY KEY,
+  business_id  TEXT NOT NULL UNIQUE,
+  run_id       TEXT,
+  to_email     TEXT NOT NULL,             -- fixed at draft time; never taken from Slack
+  subject      TEXT NOT NULL,
+  body_text    TEXT NOT NULL,
+  body_html    TEXT NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'draft', -- draft|approved|sent|failed
+  approved_by  TEXT,                      -- slack user id or 'link'
+  approved_at  INTEGER,
+  sent_at      INTEGER,
+  resend_id    TEXT,
+  error        TEXT,
+  created_at   INTEGER NOT NULL
+);

@@ -207,12 +207,17 @@ export async function markPaid(
   sessionId: string,
 ): Promise<MarkPaidResult> {
   try {
-    // The events table needs a run_id, and the payment row is where it lives.
-    const payment = await env.DB.prepare(
-      'SELECT run_id FROM payments WHERE business_id = ? ORDER BY created_at DESC LIMIT 1',
-    )
-      .bind(businessId)
-      .first<{ run_id: string | null }>();
+    // Two reads, one round trip: the events table needs a run_id (the payment
+    // row is where it lives) and the dashboard plaque needs slug + name.
+    const [paymentRes, businessRes] = await env.DB.batch<Record<string, unknown>>([
+      env.DB.prepare(
+        'SELECT run_id FROM payments WHERE business_id = ? ORDER BY created_at DESC LIMIT 1',
+      ).bind(businessId),
+      env.DB.prepare('SELECT slug, name FROM businesses WHERE id = ?').bind(businessId),
+    ]);
+
+    const payment = asPaymentRow(paymentRes?.results?.[0]);
+    const business = asBusinessRow(businessRes?.results?.[0]);
 
     if (!payment) {
       // A paid session for a business we never made an offer to. Loud, not silent.
@@ -235,10 +240,13 @@ export async function markPaid(
       .run();
 
     if (payment.run_id) {
+      // The dashboard shows its plaque on agent 'revenue', state 'paid'.
+      // `business` is omitted rather than faked when the row is unreadable.
       await emit(env, {
         run_id: payment.run_id,
-        state: 'done',
-        message: `Paid — $${PRICE_AMOUNT_USD}/month.`,
+        state: 'paid',
+        message: 'Payment confirmed — monitoring active.',
+        business: business ? { slug: business.slug, name: business.name, lit: true } : undefined,
       });
     }
 
@@ -246,6 +254,20 @@ export async function markPaid(
   } catch (e: unknown) {
     return { ok: false, error: safeError(e) };
   }
+}
+
+/* --- Narrowing for the batched reads. D1 hands back `unknown` columns. --- */
+
+function asPaymentRow(value: unknown): { run_id: string | null } | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const runId = (value as { run_id?: unknown }).run_id;
+  return { run_id: typeof runId === 'string' && runId.length > 0 ? runId : null };
+}
+
+function asBusinessRow(value: unknown): { slug: string; name: string } | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { slug, name } = value as { slug?: unknown; name?: unknown };
+  return typeof slug === 'string' && typeof name === 'string' ? { slug, name } : null;
 }
 
 /* ------------------------------------------------------------------ *

@@ -427,6 +427,10 @@ ul.cites li.only{ color:var(--ink-2); }
       <span class="lbl">City</span>
       <input id="in-city" value="San Francisco" placeholder="City" autocomplete="off">
     </label>
+    <label class="field">
+      <span class="lbl">Access token</span>
+      <input id="in-token" type="password" placeholder="run token" autocomplete="off">
+    </label>
     <button class="run" id="btn-run">Run</button>
     <button class="ghost" id="btn-reset">Reset</button>
   </section>
@@ -516,7 +520,7 @@ ul.cites li.only{ color:var(--ink-2); }
   <section class="nd" id="nd">
     <div class="head">
       <span class="title">Non-determinism probe</span>
-      <span class="query">Same engine, same prompt, <em id="nd-gap">90 seconds apart</em> &middot; <em id="nd-engine">Gemini</em> &middot; <span id="nd-q">&ldquo;best bakery in the Mission, San Francisco&rdquo;</span></span>
+      <span class="query">Same engine, same prompt, <em id="nd-gap">back to back</em> &middot; <em id="nd-engine">Gemini</em> &middot; <span id="nd-q">&ldquo;best bakery in the Mission, San Francisco&rdquo;</span></span>
     </div>
     <div class="nd-body">
       <div class="side a">
@@ -554,7 +558,7 @@ ul.cites li.only{ color:var(--ink-2); }
   </section>
 
   <div class="foot">
-    <span>Engines probed: <b>OpenAI &middot; Gemini &middot; Claude</b></span>
+    <span>Engines probed: <b>Claude (web search)</b></span>
     <span>Ground truth: <b>Google Places (New)</b></span>
     <span>Score: <b>computed in code</b></span>
     <span>Honestly labeled: <b>we measure answers, we do not claim to change them</b></span>
@@ -739,6 +743,12 @@ let timers = [], facts = [], t0 = 0, clockTimer = null;
    are separate channels: payment never touches lighting. */
 let stageBusiness = null, stageCompetitors = [], stagePaid = false, stageSignVisible = false;
 
+/* ---------- live poll handle ----------
+   startPolling() replaces livePoll.stop with a closure over the running
+   poll loop; reset() and a fresh startPolling() call both use this to make
+   sure only one poll loop is ever ticking. */
+let livePoll = { stop: function(){} };
+
 function gradeFor(s){
   if (s === null || s === undefined) return "—";
   if (s >= 90) return "A"; if (s >= 80) return "B";
@@ -781,7 +791,7 @@ function renderScore(score){
   arc.style.stroke = gradeColor(score);
   arc.style.strokeDashoffset = String(C - (C * (score / 100)));
   $("gradenote").textContent =
-    "Grade " + gradeFor(score) + ". Computed in code from ground-truth diffs across 12 fact probes — no model graded this number.";
+    "Grade " + gradeFor(score) + ". Computed in code from ground-truth diffs across 6 fact probes — no model graded this number.";
 }
 
 function renderFacts(newFacts){
@@ -858,6 +868,16 @@ function renderUrl(url){
   $("deploy").style.borderColor = "var(--rule-hot)";
 }
 
+/* Live events send overlap.gap as a number of seconds; the fixture sends an
+   already-formatted string. Handle both, and never print a bare "0". */
+function formatGap(gap){
+  if (typeof gap === "number"){
+    if (gap <= 0) return "back to back";
+    return gap + (gap === 1 ? " second apart" : " seconds apart");
+  }
+  return gap;
+}
+
 function renderOverlap(o){
   const A = o.a.sources, B = o.b.sources;
   const setB = new Set(B), setA = new Set(A);
@@ -866,7 +886,7 @@ function renderOverlap(o){
   const pct = denom ? (shared.length / denom) * 100 : 0;
 
   $("nd-engine").textContent = o.engine;
-  $("nd-gap").textContent = o.gap;
+  $("nd-gap").textContent = formatGap(o.gap);
   $("nd-q").innerHTML = "&ldquo;" + esc(o.query) + "&rdquo;";
   $("nd-a-stamp").textContent = o.a.ts;
   $("nd-b-stamp").textContent = o.b.ts;
@@ -918,6 +938,7 @@ function stop(){ timers.forEach(clearTimeout); timers = []; if (clockTimer) clea
 
 function reset(){
   stop();
+  livePoll.stop();
   facts = [];
   stageBusiness = null; stageCompetitors = []; stagePaid = false; stageSignVisible = false;
   const stageHost = $("stageShops");
@@ -948,6 +969,7 @@ function reset(){
     el.state.dataset.s = "idle"; el.state.textContent = "idle";
   });
   $("btn-run").disabled = false;
+  $("btn-reset").disabled = false;
 }
 
 function play(){
@@ -976,10 +998,8 @@ function play(){
   });
 }
 
-$("btn-run").addEventListener("click", play);
-$("btn-reset").addEventListener("click", reset);
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city")) play();
+  if (e.key === "Enter" && (e.target.id === "in-biz" || e.target.id === "in-city" || e.target.id === "in-token")) runRequested();
 });
 
 /* ?demo=replay — autoplay for the wifi-off backup path */
@@ -988,45 +1008,78 @@ if (new URLSearchParams(location.search).get("demo") === "replay"){
 }
 
 /* ============================================================
-   LIVE MODE — ?run=<runId>
-   Polls the Worker's event feed instead of playing the fixture.
+   TOKEN PERSISTENCE
+   The access token lives only in memory and, best-effort, in
+   sessionStorage — never in the URL, never logged. sessionStorage
+   can throw (private browsing, blocked storage); every access is
+   wrapped so a blocked store never breaks the run button.
+   ============================================================ */
+(function tokenPersistence(){
+  const tokenInput = $("in-token");
+  if (!tokenInput) return;
+  try{
+    const saved = sessionStorage.getItem("vouch_run_token");
+    if (saved) tokenInput.value = saved;
+  }catch(e){ /* storage blocked — token just won't survive a reload */ }
+  tokenInput.addEventListener("input", () => {
+    try{ sessionStorage.setItem("vouch_run_token", tokenInput.value); }catch(e){}
+  });
+})();
+
+/* ============================================================
+   EVENT POLLING — shared by ?run=<runId> page loads and by a
+   live run kicked off from the Run button.
    Fails loudly: a bad run id is refused, a fetch error is logged
    and retried, never silently swallowed or papered over with a
    guessed value.
    ============================================================ */
-(function liveMode(){
-  const runId = new URLSearchParams(location.search).get("run");
-  if (!runId) return; // fixture demo mode, untouched
-
-  if (!/^[0-9a-f-]{36}$/.test(runId)){
-    console.error("Vouch dashboard: ignoring malformed run id in URL:", runId);
-    return;
+function parseEventRow(row){
+  let payload;
+  try{
+    payload = row && row.payload_json ? JSON.parse(row.payload_json) : {};
+  }catch(e){
+    console.error("Vouch dashboard: unparsable payload_json for row, skipping", e);
+    return null;
   }
+  if (!payload || typeof payload !== "object") payload = {};
+  // row fields win over payload fields for the envelope keys.
+  return Object.assign({}, payload, {
+    run_id: row.run_id,
+    ts: row.ts,
+    agent: row.agent,
+    state: row.state,
+    message: row.message
+  });
+}
 
+/* Stop condition: an orchestrator failure, or the outreach agent reaching
+   done/failed (the Slack approval that finishes outreach arrives well after
+   orchestrator reports done — polling must outlive that), or 10 minutes of
+   silence since the last event, whichever comes first. */
+function startPolling(runId){
+  const POLL_MS = 2000;
+  const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
   let since = 0;
   let stopped = false;
+  let timer = null;
+  let lastEventAt = Date.now();
+  let bizNameApplied = false;
 
-  function parseRow(row){
-    let payload;
-    try{
-      payload = row && row.payload_json ? JSON.parse(row.payload_json) : {};
-    }catch(e){
-      console.error("Vouch dashboard: unparsable payload_json for row, skipping", e);
-      return null;
-    }
-    if (!payload || typeof payload !== "object") payload = {};
-    // row fields win over payload fields for the envelope keys.
-    return Object.assign({}, payload, {
-      run_id: row.run_id,
-      ts: row.ts,
-      agent: row.agent,
-      state: row.state,
-      message: row.message
-    });
-  }
+  livePoll.stop = function(){
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
 
   async function poll(){
     if (stopped) return;
+
+    if (Date.now() - lastEventAt > IDLE_TIMEOUT_MS){
+      stopped = true;
+      console.error("Vouch dashboard: polling stopped — no events for 10 minutes");
+      $("led").className = "led";
+      return;
+    }
+
     try{
       const res = await fetch(
         "/api/events/" + encodeURIComponent(runId) + "?since=" + encodeURIComponent(since),
@@ -1042,11 +1095,21 @@ if (new URLSearchParams(location.search).get("demo") === "replay"){
           console.error("Vouch dashboard: /api/events returned an unexpected shape", body);
         } else {
           rows.forEach(row => {
-            const ev = parseRow(row);
+            const ev = parseEventRow(row);
             if (!ev) return;
             if (typeof ev.ts === "number" && ev.ts > since) since = ev.ts;
+            lastEventAt = Date.now();
             window.applyEvent(ev);
-            if (ev.agent === "orchestrator" && (ev.state === "done" || ev.state === "failed")){
+
+            if (!bizNameApplied && ev.agent === "auditor" && ev.business && ev.business.name){
+              const bizInput = $("in-biz");
+              if (bizInput) bizInput.value = ev.business.name;
+              bizNameApplied = true;
+            }
+
+            const orchestratorFailed = ev.agent === "orchestrator" && ev.state === "failed";
+            const outreachFinished = ev.agent === "outreach" && (ev.state === "done" || ev.state === "failed");
+            if (orchestratorFailed || outreachFinished){
               stopped = true;
               $("led").className = ev.state === "done" ? "led done" : "led";
             }
@@ -1056,15 +1119,133 @@ if (new URLSearchParams(location.search).get("demo") === "replay"){
     }catch(e){
       console.error("Vouch dashboard: /api/events poll errored:", e);
     }
-    if (!stopped) setTimeout(poll, 2000);
+    if (!stopped) timer = setTimeout(poll, POLL_MS);
+  }
+
+  poll();
+}
+
+/* ============================================================
+   LIVE RUN — access token present in the field
+   Starts a run via POST /api/run, reads the ndjson stream until
+   the run id shows up, then hands off to the shared poller.
+   ============================================================ */
+function showRunStatus(text){
+  $("runid").textContent = text;
+  $("led").className = "led";
+}
+
+async function runLive(token){
+  stop();          // halt any fixture playback in progress
+  livePoll.stop();  // halt any previous poll loop
+  reset();
+  $("btn-run").disabled = true;
+  $("led").className = "led live";
+  $("runid").textContent = "run — starting";
+
+  const name = ($("in-biz").value || "").trim();
+  const city = ($("in-city").value || "").trim();
+
+  let res;
+  try{
+    res = await fetch("/api/run", {
+      method: "POST",
+      headers: { "content-type": "application/json", "authorization": "Bearer " + token },
+      body: JSON.stringify({ name: name, city: city })
+    });
+  }catch(e){
+    console.error("Vouch dashboard: /api/run request failed:", e);
+    showRunStatus("network error starting run");
+    $("btn-run").disabled = false;
+    return;
+  }
+
+  if (!res.ok){
+    let msg;
+    if (res.status === 401) msg = "bad token";
+    else if (res.status === 429) msg = "rate limited";
+    else msg = "run failed (status " + res.status + ")";
+    console.error("Vouch dashboard: /api/run rejected the request:", res.status);
+    showRunStatus(msg);
+    $("btn-run").disabled = false;
+    return;
+  }
+
+  if (!res.body){
+    console.error("Vouch dashboard: /api/run response had no readable body");
+    showRunStatus("no stream from server");
+    $("btn-run").disabled = false;
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let runIdSeen = false;
+
+  try{
+    // Keep reading until the server closes the stream (done or cancellation) —
+    // heartbeats are ignored, the runId line hands off to the shared poller.
+    while (true){
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n")) >= 0){
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line) continue;
+        let msg;
+        try{ msg = JSON.parse(line); }catch(e){
+          console.error("Vouch dashboard: unparsable ndjson line from /api/run, skipping", e);
+          continue;
+        }
+        if (!runIdSeen && msg && msg.runId){
+          runIdSeen = true;
+          history.replaceState(null, "", "?run=" + encodeURIComponent(msg.runId));
+          $("runid").textContent = msg.runId;
+          startPolling(msg.runId);
+        } else if (msg && msg.done){
+          console.log("Vouch dashboard: /api/run stream reported done");
+        }
+        // heartbeat lines are otherwise ignored
+      }
+    }
+  }catch(e){
+    console.error("Vouch dashboard: /api/run stream errored:", e);
+    showRunStatus("stream error");
+  }
+
+  $("btn-run").disabled = false;
+}
+
+function runRequested(){
+  const token = ($("in-token") && $("in-token").value || "").trim();
+  if (token) runLive(token);
+  else play();
+}
+
+$("btn-run").addEventListener("click", runRequested);
+$("btn-reset").addEventListener("click", reset);
+
+/* ============================================================
+   LIVE MODE — ?run=<runId> on page load
+   Polls the Worker's event feed instead of playing the fixture.
+   ============================================================ */
+(function liveMode(){
+  const runId = new URLSearchParams(location.search).get("run");
+  if (!runId) return; // fixture demo mode, untouched
+
+  if (!/^[0-9a-f-]{36}$/.test(runId)){
+    console.error("Vouch dashboard: ignoring malformed run id in URL:", runId);
+    return;
   }
 
   // Live mode owns the console; fixture playback controls don't apply.
   $("btn-run").disabled = true;
-  $("btn-reset").disabled = true;
   $("runid").textContent = runId;
   $("led").className = "led live";
-  poll();
+  startPolling(runId);
 })();
 </script>
 </body>
